@@ -61,10 +61,9 @@ Both services are now running natively. The API is at `http://localhost:3000` an
 
 ## Publishing / Production Deployment
 
-If you are ready to publish this project and do not want to use Docker, we recommend using a **Platform-as-a-Service (PaaS)** like **Render** or **Railway**. 
+To publish this project 100% for free (without a credit card), you can deploy the components manually using Supabase, Upstash, and Render free tiers.
 
-We have provided a `render.yaml` file in the root directory that defines the entire infrastructure as code.
-See [docs/deployment.md](./docs/deployment.md) for full publishing instructions without Docker.
+See [docs/deployment.md](./docs/deployment.md) for full step-by-step instructions.
 
 ## API Documentation Overview
 

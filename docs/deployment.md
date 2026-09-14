@@ -1,40 +1,57 @@
-# Production Deployment Guide (Cloud / PaaS)
+# Production Deployment Guide (100% Free Tier)
 
-This project has been configured for a **1-click automated deployment** using [Render](https://render.com/), a Platform as a Service (PaaS). 
+To deploy this project completely for free without being asked for a credit card, you must use a combination of services that offer generous "forever free" tiers. Automated Blueprints often require a credit card on file for verification, so we will deploy the components manually.
 
-Because we have removed the strict dependency on TimescaleDB, you **do not** need to sign up for Supabase, Timescale Cloud, or any third-party database. Render will provision and host the entire stack for you automatically using standard PostgreSQL.
+## 1. Database (Supabase)
+Supabase provides a free, managed PostgreSQL database.
+1. Go to [Supabase](https://supabase.com/) and create a free account.
+2. Click **New Project** and choose a strong database password.
+3. Once created, go to **Settings > Database**.
+4. Scroll down to **Connection String > URI** and copy it.
+   *(It will look like `postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres`)*
 
-## 1-Click Publishing to Render
+## 2. Redis Cache (Upstash)
+Upstash provides a free, serverless Redis database.
+1. Go to [Upstash](https://upstash.com/) and create a free account.
+2. Click **Create Database** (Name it `dc360`, Type: Redis).
+3. Scroll down to the **Node.js / ioredis** section and copy the connection string.
+   *(It will look like `rediss://default:[password]@[endpoint]:[port]`)*
 
-I have created a `render.yaml` file in the root of the project. This is an Infrastructure-as-Code file that tells Render exactly how to build and publish your project natively.
+## 3. Web Servers (Render)
+Render allows you to host Web Services for free, provided you create them manually instead of using a Blueprint.
 
-1. Push this entire project to a **GitHub repository**.
-2. Go to [Render](https://render.com/) and create a free account.
-3. Click **New +** and select **Blueprint**.
-4. Connect your GitHub account and select your repository.
+**Step A: Deploy the Python ML Service**
+1. Go to [Render](https://render.com/) and click **New + > Web Service**.
+2. Connect your GitHub repository.
+3. Configure the service:
+   - **Name**: `dc360-ml-service`
+   - **Root Directory**: `ml-service`
+   - **Environment**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - **Instance Type**: **Free**
+4. Click **Create Web Service**. Wait for it to deploy, then copy the live URL (e.g., `https://dc360-ml-service.onrender.com`).
 
-That's it! Render will automatically read the `render.yaml` file and deploy 4 things simultaneously:
-1. **`dc360-db`**: A managed PostgreSQL database.
-2. **`dc360-redis`**: A managed Redis Cache.
-3. **`dc360-api`**: The Node.js Core API (automatically linked to the DB and Redis).
-4. **`dc360-ml-service`**: The Python ML Service.
+**Step B: Deploy the Node.js API**
+1. Go back to the Render dashboard and click **New + > Web Service**.
+2. Connect your GitHub repository again.
+3. Configure the service:
+   - **Name**: `dc360-api`
+   - **Root Directory**: `api`
+   - **Environment**: `Node`
+   - **Build Command**: `npm install && npm run build`
+   - **Start Command**: `npm run migrate && npm run start`
+   - **Instance Type**: **Free**
+4. Click **Advanced > Add Environment Variable**. Add the following:
+   - `DATABASE_URL`: (Paste your Supabase URL here)
+   - `REDIS_URL`: (Paste your Upstash URL here)
+   - `ML_SERVICE_URL`: (Paste the URL of your deployed Python ML service here)
+   - `JWT_SECRET`: (Type any long random password)
+   - `JWT_REFRESH_SECRET`: (Type another long random password)
+5. Click **Create Web Service**.
 
-### Environment Variables
-All critical environment variables (like `DATABASE_URL`, `REDIS_URL`, and secure `JWT_SECRET` keys) are **automatically generated and linked** by the Blueprint. You do not need to configure them manually!
-
-## 2. Run Database Migrations
-Once the API is live, you need to set up the database tables on your new Postgres instance. 
-
-1. In the Render Dashboard, click on your `dc360-api` service.
-2. Go to the **Shell** tab (this gives you terminal access to your live Node server).
-3. Run the migrations and seed data:
-   ```bash
-   npm run migrate
-   npm run seed
-   ```
-
-## 3. Connecting the Frontend
-Once everything is deployed, Render will provide you with a public URL for your API (e.g., `https://dc360-api-xxxxx.onrender.com`).
+## 4. Connecting the Frontend
+Once everything is deployed, Render will provide you with a public URL for your Node.js API (e.g., `https://dc360-api.onrender.com`).
 Update your frontend application's environment configuration to point to this new live URL.g., keep daily backups for 7 days, weekly for a month).
 
 ## Scaling Considerations
