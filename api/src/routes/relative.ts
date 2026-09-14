@@ -62,4 +62,17 @@ router.get('/patients/:id/summary', async (req: Request, res: Response) => {
   }
 });
 
+
+router.get('/patients', async (req: Request, res: Response) => {
+  try {
+    const patients = await db('care_links')
+      .join('users', 'care_links.patient_id', 'users.id')
+      .where('care_links.provider_id', req.user!.id)
+      .where('care_links.status', 'active')
+      .select('users.id', 'users.name', 'users.email', 'care_links.share_diet_detail');
+    res.json({ data: patients });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 export default router;

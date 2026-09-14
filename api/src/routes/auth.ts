@@ -79,6 +79,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     // Verify password
+    if (user.role === 'deactivated') { return res.status(403).json({ error: 'Account deactivated' }); }
     const passwordValid = await bcrypt.compare(password, user.password_hash);
     if (!passwordValid) {
       return res.status(401).json({ error: 'Invalid email or password' });

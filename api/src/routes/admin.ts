@@ -94,4 +94,58 @@ router.get('/food-database', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// Admin Deactivate User (Phase 12)
+router.patch('/users/:id/deactivate', async (req: Request, res: Response) => {
+  try {
+    const updated = await db('users')
+      .where({ id: req.params.id })
+      .update({ role: 'deactivated', updated_at: new Date().toISOString() })
+      .returning('*');
+    
+    if (updated.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ data: updated[0] });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Admin view patient (creates audit log automatically)
+router.get('/patients/:id', async (req: Request, res: Response) => {
+  try {
+    const reason = req.query.reason as string;
+    if (!reason || reason.length < 5) {
+      return res.status(400).json({ error: 'Audit reason required (min 5 chars) to view patient data' });
+    }
+
+    const patient = await db('users').where({ id: req.params.id, role: 'patient' }).first();
+    if (!patient) {
+      return res.status(404).json({ error: 'Patient not found' });
+    }
+
+    // Write audit log
+    await db('admin_audit_log').insert({
+      admin_id: req.user!.id,
+      patient_id: patient.id,
+      reason,
+    });
+
+    // Return sensitive patient data (same as doctor report)
+    const [latestReading] = await db('glucose_readings')
+      .where({ user_id: patient.id })
+      .orderBy('timestamp', 'desc')
+      .limit(1);
+
+    res.json({
+      data: {
+        patient: { id: patient.id, name: patient.name, email: patient.email },
+        latest_glucose: latestReading || null
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 export default router;
