@@ -43,3 +43,4 @@ The final step in the PRD was to implement **Phase 10: CI/CD Pipeline**.
 - The intention was to write a `.github/workflows/ci.yml` file to run Jest tests automatically on every GitHub push.
 - **Status:** BLOCKED. The user's provided Personal Access Token (PAT) for GitHub does not have the `workflow` scope enabled. Git strictly rejects pushes that modify `.github/workflows/` without this scope.
 - **Workaround:** CI/CD has been skipped. Deployments run directly to Render and Vercel without a middle-man testing action.
+
