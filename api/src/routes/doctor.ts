@@ -191,7 +191,7 @@ router.get('/patients/:id/report', authenticate, requireRole(['clinician', 'care
 router.get('/inbox', async (req: Request, res: Response) => {
   try {
     // We want the most recent message for each patient the doctor is linked to
-    const messages = await db.raw(\
+    const messages = await db.raw(`
       SELECT m.*, u.name as patient_name
       FROM messages m
       JOIN users u ON u.id = CASE WHEN m.sender_id = ? THEN m.recipient_id ELSE m.sender_id END
@@ -202,7 +202,7 @@ router.get('/inbox', async (req: Request, res: Response) => {
         GROUP BY LEAST(sender_id, recipient_id), GREATEST(sender_id, recipient_id)
       )
       ORDER BY m.created_at DESC
-    \, [req.user!.id, req.user!.id, req.user!.id]);
+    `, [req.user!.id, req.user!.id, req.user!.id]);
 
     res.json({ data: messages.rows });
   } catch (error: any) {

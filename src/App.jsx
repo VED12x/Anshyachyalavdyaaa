@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, createContext, useContext } from "react";
+import React, { useState, useEffect, createContext, useContext } from "react";
 import {
   LayoutGrid, TrendingUp, Pill, Utensils, Users, Settings, Bell,
   Droplet, Bluetooth, Sparkles, Check, Clock, AlertTriangle, ChevronRight,
@@ -17,11 +17,11 @@ function RelativeDashboard({ token, onLogout }) {
   const [summary, setSummary] = useState(null);
 
   useEffect(() => {
-    fetch(\\/relative/patients\, { headers: { Authorization: \Bearer \\ } })
+    fetch(`${API_URL}/relative/patients`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(d => {
         setPatients(d.data || []);
         if (d.data?.length > 0) {
-          fetch(\\/relative/patients/\/summary\, { headers: { Authorization: \Bearer \\ } })
+          fetch(`${API_URL}/relative/patients/${d.data[0].id}/summary`, { headers: { Authorization: `Bearer ${token}` } })
             .then(r => r.json()).then(s => setSummary(s.data));
         }
       });
@@ -41,7 +41,7 @@ function RelativeDashboard({ token, onLogout }) {
           <div style={{ display: "flex", gap: 20 }}>
             <Card style={{ flex: 1 }}>
               <h3>Current Glucose</h3>
-              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || 'â€”'} mg/dL</p>
+              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || '—'} mg/dL</p>
             </Card>
             <Card style={{ flex: 1 }}>
               <h3>Recent Alerts</h3>
@@ -63,9 +63,9 @@ function DoctorDashboard({ token, onLogout }) {
   const [escalations, setEscalations] = useState([]);
 
   useEffect(() => {
-    fetch(\\/doctor/patients\, { headers: { Authorization: \Bearer \\ } })
+    fetch(`${API_URL}/doctor/patients`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(d => setPatients(d.data || []));
-    fetch(\\/doctor/escalations\, { headers: { Authorization: \Bearer \\ } })
+    fetch(`${API_URL}/doctor/escalations`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(d => setEscalations(d.data || []));
   }, [token]);
 
@@ -107,19 +107,19 @@ function AdminDashboard({ token, onLogout }) {
   const [viewedPatient, setViewedPatient] = useState(null);
 
   useEffect(() => {
-    fetch(\\/admin/users\, { headers: { Authorization: \Bearer \\ } })
+    fetch(`${API_URL}/admin/users`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(d => setUsers(d.data || []));
-    fetch(\\/admin/system-health\, { headers: { Authorization: \Bearer \\ } })
+    fetch(`${API_URL}/admin/system-health`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(d => setSysHealth(d.data));
   }, [token]);
 
   const deactivate = async (id) => {
-    await fetch(\\/admin/users/\/deactivate\, { method: 'PATCH', headers: { Authorization: \Bearer \\ } });
+    await fetch(`${API_URL}/admin/users/${id}/deactivate`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
     setUsers(users.map(u => u.id === id ? { ...u, role: 'deactivated' } : u));
   };
 
   const viewPatient = async (id) => {
-    const res = await fetch(\\/admin/patients/\?reason=\\, { headers: { Authorization: \Bearer \\ } });
+    const res = await fetch(`${API_URL}/admin/patients/${id}?reason=${encodeURIComponent(auditReason)}`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) return alert('Failed to view patient (ensure reason > 5 chars)');
     const d = await res.json();
     setViewedPatient(d.data);
