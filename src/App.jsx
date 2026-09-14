@@ -365,13 +365,13 @@ export default function App() {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState("overview");
 
-  const login = async () => {
+  const login = async (email) => {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "patient@demo.com", password: "password123" })
+        body: JSON.stringify({ email, password: "password123" })
       });
       const d = await res.json();
       if (d.access_token) {
@@ -387,12 +387,20 @@ export default function App() {
 
   useEffect(() => {
     if (token) {
-      fetch(`${API_URL}/dashboard/summary`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      .then(res => res.json())
-      .then(d => setData(d))
-      .catch(e => console.error(e));
+      const user = parseJwt(token);
+      
+      // If patient, fetch dashboard. For others, just dummy data for now
+      // (Phases 12 and 13 will implement their real dashboards)
+      if (user?.role === 'patient') {
+        fetch(`${API_URL}/dashboard/summary`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => res.json())
+        .then(d => setData(d))
+        .catch(e => console.error(e));
+      } else {
+        setData({ role: user?.role, dummy: true });
+      }
     }
   }, [token]);
 
@@ -402,11 +410,34 @@ export default function App() {
         <style>{`@import url('${FONT_LINK}'); * { box-sizing: border-box; }`}</style>
         <Card style={{ width: 400, textAlign: "center" }}>
           <h2 style={{ fontFamily: "Fraunces", color: "#114B4B" }}>DiabetesCare 360</h2>
-          <p style={{ fontFamily: "IBM Plex Sans", color: "#8A968F", marginBottom: 20 }}>Connect to your Render API</p>
-          <button onClick={login} disabled={loading} style={{ background: "#114B4B", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 8, cursor: "pointer", fontFamily: "IBM Plex Sans", fontWeight: 600, width: "100%" }}>
-            {loading ? "Connecting..." : "Log in as Patient (Demo)"}
-          </button>
+          <p style={{ fontFamily: "IBM Plex Sans", color: "#8A968F", marginBottom: 20 }}>Select a role to continue</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <button onClick={() => login("patient@demo.com")} disabled={loading} style={{ background: "#114B4B", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 8, cursor: "pointer", fontFamily: "IBM Plex Sans", fontWeight: 600 }}>
+              {loading ? "Connecting..." : "Log in as Patient"}
+            </button>
+            <button onClick={() => login("relative@demo.com")} disabled={loading} style={{ background: "#F6EDDD", color: "#B8863A", border: "none", padding: "12px 24px", borderRadius: 8, cursor: "pointer", fontFamily: "IBM Plex Sans", fontWeight: 600 }}>
+              {loading ? "Connecting..." : "Log in as Relative"}
+            </button>
+            <button onClick={() => login("doctor@demo.com")} disabled={loading} style={{ background: "#E6F1EC", color: "#3F8F6B", border: "none", padding: "12px 24px", borderRadius: 8, cursor: "pointer", fontFamily: "IBM Plex Sans", fontWeight: 600 }}>
+              {loading ? "Connecting..." : "Log in as Doctor"}
+            </button>
+            <button onClick={() => login("admin@demo.com")} disabled={loading} style={{ background: "#F5E5E3", color: "#C1473D", border: "none", padding: "12px 24px", borderRadius: 8, cursor: "pointer", fontFamily: "IBM Plex Sans", fontWeight: 600 }}>
+              {loading ? "Connecting..." : "Log in as Admin"}
+            </button>
+          </div>
         </Card>
+      </div>
+    );
+  }
+
+  const user = parseJwt(token);
+  
+  if (user?.role !== 'patient') {
+    return (
+      <div style={{ padding: 40, fontFamily: "IBM Plex Sans", textAlign: "center" }}>
+        <h2>Logged in as {user?.role.toUpperCase()}</h2>
+        <p>This dashboard is under construction (Phases 12/13).</p>
+        <button onClick={() => setToken(null)} style={{ background: "#114B4B", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 8, cursor: "pointer", marginTop: 20 }}>Log out</button>
       </div>
     );
   }
