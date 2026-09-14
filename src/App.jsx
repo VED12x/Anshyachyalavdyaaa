@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+﻿import React, { useState, useEffect, createContext, useContext } from "react";
 import {
   LayoutGrid, TrendingUp, Pill, Utensils, Users, Settings, Bell,
   Droplet, Bluetooth, Sparkles, Check, Clock, AlertTriangle, ChevronRight,
@@ -41,7 +41,7 @@ function RelativeDashboard({ token, onLogout }) {
           <div style={{ display: "flex", gap: 20 }}>
             <Card style={{ flex: 1 }}>
               <h3>Current Glucose</h3>
-              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || '—'} mg/dL</p>
+              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || 'â€”'} mg/dL</p>
             </Card>
             <Card style={{ flex: 1 }}>
               <h3>Recent Alerts</h3>
@@ -238,10 +238,10 @@ function OverviewScreen() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", gap: 16 }}>
-        <StatCard label="Current glucose" value={data.current_glucose?.value || "â€”"} unit="mg/dL" tone={{ tone: "good", label: "In range" }} icon={Droplet} />
+        <StatCard label="Current glucose" value={data.current_glucose?.value || "Ã¢â‚¬â€"} unit="mg/dL" tone={{ tone: "good", label: "In range" }} icon={Droplet} />
         <StatCard label="Time in range (7d)" value={data.time_in_range || "0"} unit="%" tone={{ tone: "good", label: "Stable" }} icon={TrendingUp} />
-        <StatCard label="Estimated HbA1c" value={data.estimated_hba1c || "â€”"} unit="%" tone={{ tone: "warn", label: "Watch trend" }} icon={Sparkles} />
-        <StatCard label="Adherence" value={data.adherence || "â€”"} unit="%" tone={{ tone: "good", label: "On track" }} icon={Pill} />
+        <StatCard label="Estimated HbA1c" value={data.estimated_hba1c || "Ã¢â‚¬â€"} unit="%" tone={{ tone: "warn", label: "Watch trend" }} icon={Sparkles} />
+        <StatCard label="Adherence" value={data.adherence || "Ã¢â‚¬â€"} unit="%" tone={{ tone: "good", label: "On track" }} icon={Pill} />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18, alignItems: "start" }}>
@@ -294,68 +294,6 @@ function OverviewScreen() {
     </div>
   );
 }
-
-function TrendsScreen() {
-  const { data } = useContext(DataContext);
-  if (!data) return null;
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      <Card>
-        <SectionTitle action={data.risk?.hyper_risk > 0.5 ? <Pill_ tone="warn">Rising risk</Pill_> : null}>Next 3 hours &mdash; Forecast</SectionTitle>
-        <ResponsiveContainer width="100%" height={260}>
-          <ComposedChart data={data.forecast || []} margin={{ top: 10, right: 20, bottom: 0, left: -10 }}>
-            <CartesianGrid vertical={false} stroke="#F1F3F2" />
-            <ReferenceLine y={180} stroke="#EADFC8" strokeDasharray="3 3" />
-            <ReferenceLine y={70} stroke="#EADFC8" strokeDasharray="3 3" />
-            <XAxis dataKey="t" tick={{ fontFamily: "IBM Plex Sans", fontSize: 11, fill: "#8A968F" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontFamily: "IBM Plex Sans", fontSize: 11, fill: "#8A968F" }} axisLine={false} tickLine={false} domain={[50, 220]} />
-            <Area type="monotone" dataKey="high" stroke="none" fill="#C98A2C" fillOpacity={0.08} />
-            <Area type="monotone" dataKey="low" stroke="none" fill="#FFFFFF" fillOpacity={1} />
-            <Line type="monotone" dataKey="actual" stroke="#114B4B" strokeWidth={2.5} dot={{ r: 3.5, fill: "#114B4B" }} connectNulls={false} />
-            <Line type="monotone" dataKey="predicted" stroke="#C98A2C" strokeWidth={2} strokeDasharray="4 3" dot={false} />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </Card>
-      <div style={{ display: "flex", gap: 18 }}>
-        <StatCard label="Avg. glucose (7d)" value={data.avg_glucose_7d || "â€”"} unit="mg/dL" icon={Droplet} />
-        <StatCard label="Hypo events (7d)" value={data.hypo_events_7d || 0} unit="events" icon={AlertTriangle} />
-        <StatCard label="Hyper events (7d)" value={data.hyper_events_7d || 0} unit="events" icon={TrendingUp} />
-      </div>
-    </div>
-  );
-}
-
-function MedicationsScreen() {
-  const { token } = useContext(DataContext);
-  const [meds, setMeds] = useState([]);
-  
-  useEffect(() => {
-    fetch(`${API_URL}/medications`, { headers: { Authorization: `Bearer ${token}` }})
-      .then(r => r.json()).then(d => setMeds(d.data || [])).catch(console.error);
-  }, [token]);
-
-  return (
-    <Card>
-      <SectionTitle>Your Medications</SectionTitle>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {meds.length === 0 && <div style={{ color: "#8A968F", fontSize: 13, fontFamily: "IBM Plex Sans" }}>No medications found.</div>}
-        {meds.map(m => (
-          <div key={m.log_id || `${m.id}-${m.time}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", border: "1px solid #F1F3F2", borderRadius: 12 }}>
-            <div>
-              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, fontWeight: 600, color: "#17221F", textDecoration: m.done ? "line-through" : "none", opacity: m.done ? 0.6 : 1 }}>{m.name}</div>
-              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 12.5, color: "#8A968F", marginTop: 4 }}>Scheduled for {m.time}</div>
-            </div>
-            <Pill_ tone={m.done ? "good" : (m.status === "missed" ? "risk" : "neutral")}>{m.done ? "Taken" : (m.status === "missed" ? "Missed" : "Pending")}</Pill_>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-function DietScreen() {
-  const { token } = useContext(DataContext);
-  const [meals, setMeals] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -380,7 +318,7 @@ function DietScreen() {
         id: m.id,
         name: m.description,
         time: new Date(m.logged_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-        carbs: m.estimated_carbs_g ? `${Math.round(m.estimated_carbs_g)}g carbs` : 'â€”',
+        carbs: m.estimated_carbs_g ? `${Math.round(m.estimated_carbs_g)}g carbs` : 'Ã¢â‚¬â€',
         tag: m.tag || 'Pending',
         recommendation: m.recommendation,
         logged_at: m.logged_at,
