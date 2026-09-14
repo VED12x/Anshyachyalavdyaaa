@@ -105,4 +105,23 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
   }
 });
 
+
+/**
+ * POST /meals/simulate (Phase 16)
+ * Calls the ML service for NLP dietary analysis WITHOUT saving to the database.
+ */
+router.post('/simulate', authenticate, async (req: Request, res: Response) => {
+  try {
+    const parsed = mealSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Validation failed', details: parsed.error.errors });
+    }
+    const { description, photo_url } = parsed.data;
+    const analysis = await mlService.analyzeMeal(description, photo_url);
+    res.json({ data: analysis });
+  } catch (error: any) {
+    console.error('Simulate meal error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 export default router;

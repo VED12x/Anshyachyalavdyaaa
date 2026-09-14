@@ -24,7 +24,7 @@ router.get('/patients', authenticate, requireRole(['doctor']), async (req: Reque
         'care_links.created_at as linked_since'
       );
 
-    // For each patient, compute quick-glance status
+    // For each patient, compute quick-glance status and Phase 17 Risk ML
     const patients = await Promise.all(
       links.map(async (link: any) => {
         const sevenDaysAgo = new Date();
@@ -33,7 +33,8 @@ router.get('/patients', authenticate, requireRole(['doctor']), async (req: Reque
         // Time in range (7d)
         const readings = await db('glucose_readings')
           .where({ user_id: link.patient_id })
-          .where('recorded_at', '>=', sevenDaysAgo.toISOString());
+          .where('recorded_at', '>=', sevenDaysAgo.toISOString())
+          .orderBy('recorded_at', 'asc');
 
         const inRange = readings.filter(
           (r: any) => r.value_mgdl >= 70 && r.value_mgdl <= 180
@@ -48,10 +49,25 @@ router.get('/patients', authenticate, requireRole(['doctor']), async (req: Reque
           .count('id as count');
 
         // Latest glucose
-        const latestReading = await db('glucose_readings')
-          .where({ user_id: link.patient_id })
-          .orderBy('recorded_at', 'desc')
-          .first();
+        const latestReading = readings[readings.length - 1];
+
+        // Phase 17: Get Risk ML for population view triage
+        const historyForML = readings.map((r: any) => ({
+          value: r.value_mgdl,
+          timestamp: r.recorded_at,
+        })).slice(-12); // Give last 12 readings (2 hours) to ML
+
+        let riskScore = 0;
+        try {
+          if (historyForML.length >= 2) {
+            // Safe to call ML service
+            const mlService = (await import('../services/mlService')).default;
+            const risk = await mlService.getRiskPrediction(historyForML);
+            riskScore = risk.hyper_risk;
+          }
+        } catch (e) {
+          console.error("Failed to get risk for patient", link.patient_id);
+        }
 
         return {
           patient_id: link.patient_id,
@@ -60,6 +76,7 @@ router.get('/patients', authenticate, requireRole(['doctor']), async (req: Reque
           diabetes_type: link.diabetes_type,
           care_link_id: link.care_link_id,
           linked_since: link.linked_since,
+          risk_score: riskScore, // Attached for sorting!
           status: {
             time_in_range: timeInRange,
             open_alerts: parseInt(alertCount as string, 10),
@@ -71,9 +88,12 @@ router.get('/patients', authenticate, requireRole(['doctor']), async (req: Reque
       })
     );
 
+    // Phase 17: Sort by risk_score descending (Triage view)
+    patients.sort((a, b) => b.risk_score - a.risk_score);
+
     res.json({ data: patients });
   } catch (error: any) {
-    console.error('List clinician patients error:', error);
+    console.error('Fetch patients error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+﻿import React, { useState, useEffect, createContext, useContext } from "react";
 import {
   LayoutGrid, TrendingUp, Pill, Utensils, Users, Settings, Bell,
   Droplet, Bluetooth, Sparkles, Check, Clock, AlertTriangle, ChevronRight,
@@ -41,7 +41,7 @@ function RelativeDashboard({ token, onLogout }) {
           <div style={{ display: "flex", gap: 20 }}>
             <Card style={{ flex: 1 }}>
               <h3>Current Glucose</h3>
-              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || '—'} mg/dL</p>
+              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || 'â€”'} mg/dL</p>
             </Card>
             <Card style={{ flex: 1 }}>
               <h3>Recent Alerts</h3>
@@ -238,10 +238,10 @@ function OverviewScreen() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", gap: 16 }}>
-        <StatCard label="Current glucose" value={data.current_glucose?.value || "Ã¢â‚¬â€"} unit="mg/dL" tone={{ tone: "good", label: "In range" }} icon={Droplet} />
+        <StatCard label="Current glucose" value={data.current_glucose?.value || "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} unit="mg/dL" tone={{ tone: "good", label: "In range" }} icon={Droplet} />
         <StatCard label="Time in range (7d)" value={data.time_in_range || "0"} unit="%" tone={{ tone: "good", label: "Stable" }} icon={TrendingUp} />
-        <StatCard label="Estimated HbA1c" value={data.estimated_hba1c || "Ã¢â‚¬â€"} unit="%" tone={{ tone: "warn", label: "Watch trend" }} icon={Sparkles} />
-        <StatCard label="Adherence" value={data.adherence || "Ã¢â‚¬â€"} unit="%" tone={{ tone: "good", label: "On track" }} icon={Pill} />
+        <StatCard label="Estimated HbA1c" value={data.estimated_hba1c || "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} unit="%" tone={{ tone: "warn", label: "Watch trend" }} icon={Sparkles} />
+        <StatCard label="Adherence" value={data.adherence || "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} unit="%" tone={{ tone: "good", label: "On track" }} icon={Pill} />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18, alignItems: "start" }}>
@@ -318,7 +318,7 @@ function OverviewScreen() {
         id: m.id,
         name: m.description,
         time: new Date(m.logged_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-        carbs: m.estimated_carbs_g ? `${Math.round(m.estimated_carbs_g)}g carbs` : 'Ã¢â‚¬â€',
+        carbs: m.estimated_carbs_g ? `${Math.round(m.estimated_carbs_g)}g carbs` : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â',
         tag: m.tag || 'Pending',
         recommendation: m.recommendation,
         logged_at: m.logged_at,
@@ -375,6 +375,113 @@ function Message({ from, text }) {
     <div style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: 10 }}>
       <div style={{ maxWidth: "70%", background: mine ? "#114B4B" : "#F5F6F4", color: mine ? "#fff" : "#17221F", borderRadius: 14, padding: "12px 16px", fontFamily: "IBM Plex Sans", fontSize: 13, lineHeight: 1.5 }}>
         {text}
+      </div>
+    </div>
+  );
+}
+
+function DietScreen() {
+  const { token } = useContext(DataContext);
+  const [meals, setMeals] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [simulationResult, setSimulationResult] = useState(null);
+
+  useEffect(() => {
+    fetch(`/meals`, { headers: { Authorization: `Bearer ` }})
+      .then(r => r.json()).then(d => setMeals(d.data || [])).catch(console.error);
+  }, [token]);
+
+  const addMeal = async (e) => {
+    e.preventDefault();
+    if (!input) return;
+    setLoading(true);
+    setSimulationResult(null);
+    try {
+      const res = await fetch(`/meals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ` },
+        body: JSON.stringify({ description: input, logged_at: new Date().toISOString() })
+      });
+      const m = await res.json();
+      const newMeal = {
+        id: m.id,
+        name: m.description,
+        time: new Date(m.logged_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+        carbs: m.estimated_carbs_g ? `g carbs` : '—',
+        tag: m.tag || 'Pending',
+        recommendation: m.recommendation,
+        logged_at: m.logged_at,
+        nutrition: { calories: m.calories }
+      };
+      setMeals([newMeal, ...meals]);
+      setInput('');
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
+  const simulateMeal = async () => {
+    if (!input) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/meals/simulate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ` },
+        body: JSON.stringify({ description: input })
+      });
+      const d = await res.json();
+      setSimulationResult(d.data);
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <Card>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+          <SectionTitle>Diet & Meal Simulator</SectionTitle>
+          <Pill_ tone="info">ML Powered</Pill_>
+        </div>
+        <form onSubmit={addMeal} style={{ display: 'flex', gap: 10 }}>
+          <input value={input} onChange={e => setInput(e.target.value)} placeholder="What are you eating? e.g., 2 masala dosas" style={{ flex: 1, padding: '12px 16px', borderRadius: 10, border: '1px solid #E7ECEA', fontFamily: 'IBM Plex Sans', fontSize: 13 }} />
+          <button type="button" onClick={simulateMeal} disabled={loading} style={{ background: '#F6EDDD', color: '#B8863A', border: 'none', padding: '0 16px', borderRadius: 10, fontFamily: 'IBM Plex Sans', fontWeight: 600, cursor: 'pointer' }}>
+            What-If?
+          </button>
+          <button type="submit" disabled={loading} style={{ background: '#114B4B', color: '#fff', border: 'none', padding: '0 20px', borderRadius: 10, fontFamily: 'IBM Plex Sans', fontWeight: 600, cursor: 'pointer' }}>
+            Log Meal
+          </button>
+        </form>
+        {simulationResult && (
+          <div style={{ marginTop: 15, padding: 15, background: '#E6F1EC', borderRadius: 10, color: '#3F8F6B', fontFamily: 'IBM Plex Sans', fontSize: 13 }}>
+            <strong>Simulation Result:</strong> {simulationResult.estimated_carbs_g}g carbs ({simulationResult.tag}). {simulationResult.recommendation}
+          </div>
+        )}
+      </Card>
+      
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {meals.length === 0 && <div style={{ color: '#8A968F', fontSize: 13, fontFamily: 'IBM Plex Sans', padding: 10 }}>No meals logged yet.</div>}
+        {meals.map(m => (
+          <Card key={m.id} style={{ padding: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontFamily: 'IBM Plex Sans', fontSize: 15, fontWeight: 600, color: '#17221F' }}>{m.name || m.description}</div>
+                <div style={{ fontFamily: 'IBM Plex Sans', fontSize: 13, color: '#8A968F', marginTop: 4 }}>
+                  {m.carbs} &bull; {m.nutrition?.calories || 0} kcal &bull; {m.time}
+                </div>
+                {m.recommendation && (
+                  <div style={{ fontFamily: 'IBM Plex Sans', fontSize: 12.5, color: '#3F8F6B', marginTop: 8, background: '#E6F1EC', padding: '6px 10px', borderRadius: 6 }}>
+                    <Sparkles size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> {m.recommendation}
+                  </div>
+                )}
+              </div>
+              <Pill_ tone={m.tag?.includes('High') ? 'warn' : 'good'}>{m.tag}</Pill_>
+            </div>
+          </Card>
+        ))}
       </div>
     </div>
   );
