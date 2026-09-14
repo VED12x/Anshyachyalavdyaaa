@@ -2,7 +2,7 @@ import React, { useState, useEffect, createContext, useContext } from "react";
 import {
   LayoutGrid, TrendingUp, Pill, Utensils, Users, Settings, Bell,
   Droplet, Bluetooth, Sparkles, Check, Clock, AlertTriangle, ChevronRight,
-  Send, User, Search
+  Send, User, Search, Loader2
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, ResponsiveContainer, ReferenceLine,
@@ -13,6 +13,10 @@ const FONT_LINK = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9
 const API_URL = "https://dc360-api.onrender.com";
 
 const DataContext = createContext(null);
+
+const parseJwt = (t) => {
+  try { return JSON.parse(atob(t.split('.')[1])); } catch (e) { return null; }
+};
 
 function Pill_({ children, tone = "neutral" }) {
   const tones = {
@@ -156,11 +160,162 @@ function TrendsScreen() {
   );
 }
 
-function DummyScreen({ title }) {
+function MedicationsScreen() {
+  const { token } = useContext(DataContext);
+  const [meds, setMeds] = useState([]);
+  
+  useEffect(() => {
+    fetch(`${API_URL}/medications`, { headers: { Authorization: `Bearer ${token}` }})
+      .then(r => r.json()).then(setMeds).catch(console.error);
+  }, [token]);
+
   return (
     <Card>
-      <div style={{ padding: 40, textAlign: "center", fontFamily: "IBM Plex Sans", color: "#8A968F" }}>
-        {title} connected endpoints coming soon...
+      <SectionTitle>Your Medications</SectionTitle>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {meds.length === 0 && <div style={{ color: "#8A968F", fontSize: 13, fontFamily: "IBM Plex Sans" }}>No medications found.</div>}
+        {meds.map(m => (
+          <div key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", border: "1px solid #F1F3F2", borderRadius: 12 }}>
+            <div>
+              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, fontWeight: 600, color: "#17221F" }}>{m.name}</div>
+              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 12.5, color: "#8A968F", marginTop: 4 }}>{m.dosage} &bull; {m.schedule_time}</div>
+            </div>
+            <Pill_ tone="good">Prescribed</Pill_>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function DietScreen() {
+  const { token } = useContext(DataContext);
+  const [meals, setMeals] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_URL}/meals`, { headers: { Authorization: `Bearer ${token}` }})
+      .then(r => r.json()).then(d => setMeals(d.meals || [])).catch(console.error);
+  }, [token]);
+
+  const addMeal = async (e) => {
+    e.preventDefault();
+    if (!input) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/meals`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ description: input, logged_at: new Date().toISOString() })
+      });
+      const newMeal = await res.json();
+      setMeals([newMeal, ...meals]);
+      setInput("");
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <Card>
+        <SectionTitle>Log a Meal</SectionTitle>
+        <form onSubmit={addMeal} style={{ display: "flex", gap: 10 }}>
+          <input value={input} onChange={e => setInput(e.target.value)} placeholder="What did you eat? e.g., 2 rotis with dal" style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "1px solid #E7ECEA", fontFamily: "IBM Plex Sans", fontSize: 13 }} />
+          <button type="submit" disabled={loading} style={{ background: "#114B4B", color: "#fff", border: "none", padding: "0 20px", borderRadius: 10, fontFamily: "IBM Plex Sans", fontWeight: 600, cursor: "pointer" }}>
+            {loading ? "Analyzing via ML..." : "Log & Analyze"}
+          </button>
+        </form>
+      </Card>
+      
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {meals.length === 0 && <div style={{ color: "#8A968F", fontSize: 13, fontFamily: "IBM Plex Sans", padding: 10 }}>No meals logged yet.</div>}
+        {meals.map(m => (
+          <Card key={m.id} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, fontWeight: 600, color: "#17221F" }}>{m.description}</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Pill_ tone="neutral">{m.estimated_carbs_g}g carbs</Pill_>
+              <Pill_ tone="good">{m.tag}</Pill_>
+              <Pill_ tone="neutral">{m.calories} kcal</Pill_>
+            </div>
+            {m.recommendation && (
+              <div style={{ fontFamily: "Fraunces", fontSize: 14, color: "#114B4B", marginTop: 4, fontStyle: "italic" }}>
+                "{m.recommendation}"
+              </div>
+            )}
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Message({ from, text }) {
+  const mine = from === "me";
+  return (
+    <div style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: 10 }}>
+      <div style={{ maxWidth: "70%", background: mine ? "#114B4B" : "#F5F6F4", color: mine ? "#fff" : "#17221F", borderRadius: 14, padding: "12px 16px", fontFamily: "IBM Plex Sans", fontSize: 13, lineHeight: 1.5 }}>
+        {text}
+      </div>
+    </div>
+  );
+}
+
+function CareScreen() {
+  const { token, userId } = useContext(DataContext);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+
+  useEffect(() => {
+    fetch(`${API_URL}/messages`, { headers: { Authorization: `Bearer ${token}` }})
+      .then(r => r.json()).then(setMessages).catch(console.error);
+  }, [token]);
+
+  const send = async (e) => {
+    e.preventDefault();
+    if (!input || messages.length === 0) return;
+    
+    // Find the clinician ID (the person who is not me)
+    const clinicianMsg = messages.find(m => m.sender_id !== userId);
+    const recipient = clinicianMsg ? clinicianMsg.sender_id : messages[0].recipient_id;
+
+    const res = await fetch(`${API_URL}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ content: input, recipient_id: recipient })
+    });
+    const newMsg = await res.json();
+    setMessages([...messages, newMsg]);
+    setInput("");
+  };
+
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", height: 500, padding: 0, overflow: "hidden" }}>
+      <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #E7ECEA", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#E7EFEE", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <User size={20} color="#114B4B" />
+        </div>
+        <div>
+          <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, fontWeight: 600, color: "#17221F" }}>Care Team Chat</div>
+          <div style={{ fontFamily: "IBM Plex Sans", fontSize: 12, color: "#8A968F" }}>Secure messaging</div>
+        </div>
+      </div>
+      
+      <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+        {messages.map(m => (
+          <Message key={m.id} from={m.sender_id === userId ? "me" : "dr"} text={m.content} />
+        ))}
+      </div>
+      
+      <div style={{ padding: 20, borderTop: "1px solid #E7ECEA" }}>
+        <form onSubmit={send} style={{ display: "flex", gap: 10 }}>
+          <input value={input} onChange={e => setInput(e.target.value)} placeholder="Message your doctor..." style={{ flex: 1, padding: "12px 16px", borderRadius: 20, border: "1px solid #E7ECEA", fontFamily: "IBM Plex Sans", fontSize: 13 }} />
+          <button type="submit" style={{ background: "#114B4B", color: "#fff", border: "none", borderRadius: "50%", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+            <Send size={16} color="#fff" />
+          </button>
+        </form>
       </div>
     </Card>
   );
@@ -169,9 +324,9 @@ function DummyScreen({ title }) {
 const NAV = [
   { key: "overview", label: "Overview", icon: LayoutGrid, Screen: OverviewScreen },
   { key: "trends", label: "Trends & Forecast", icon: TrendingUp, Screen: TrendsScreen },
-  { key: "meds", label: "Medications", icon: Pill, Screen: () => <DummyScreen title="Medications" /> },
-  { key: "diet", label: "Diet", icon: Utensils, Screen: () => <DummyScreen title="Diet" /> },
-  { key: "care", label: "Care Team", icon: Users, Screen: () => <DummyScreen title="Care Team" /> },
+  { key: "meds", label: "Medications", icon: Pill, Screen: MedicationsScreen },
+  { key: "diet", label: "Diet", icon: Utensils, Screen: DietScreen },
+  { key: "care", label: "Care Team", icon: Users, Screen: CareScreen },
 ];
 
 const TITLES = {
@@ -236,9 +391,10 @@ export default function App() {
 
   const Active = NAV.find((n) => n.key === tab).Screen;
   const [title, subtitle] = TITLES[tab];
+  const userId = parseJwt(token)?.id;
 
   return (
-    <DataContext.Provider value={{ data }}>
+    <DataContext.Provider value={{ data, token, userId }}>
       <div style={{ minHeight: "100vh", width: "100%", background: "#F5F6F4", display: "flex" }}>
         <style>{`@import url('${FONT_LINK}'); * { box-sizing: border-box; }`}</style>
         <aside style={{ width: 232, flexShrink: 0, background: "#FFFFFF", borderRight: "1px solid #E7ECEA", padding: "22px 14px", display: "flex", flexDirection: "column", gap: 22 }}>
