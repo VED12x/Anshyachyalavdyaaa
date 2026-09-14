@@ -1,0 +1,18 @@
+
+// Doctor Escalations (Phase 12)
+router.get('/escalations', async (req: Request, res: Response) => {
+  try {
+    // Only escalations for patients linked to this doctor
+    const escalations = await db('chatbot_sessions')
+      .join('users', 'chatbot_sessions.user_id', 'users.id')
+      .join('care_links', 'care_links.patient_id', 'users.id')
+      .where('chatbot_sessions.status', 'escalated')
+      .where('chatbot_sessions.escalation_target', 'doctor')
+      .where('care_links.provider_id', req.user!.id)
+      .select('chatbot_sessions.*', 'users.name as patient_name')
+      .orderBy('started_at', 'desc');
+    res.json({ data: escalations });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});

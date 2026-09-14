@@ -183,4 +183,49 @@ router.get('/patients/:id/report', authenticate, requireRole(['clinician', 'care
   }
 });
 
+
+/**
+ * GET /inbox
+ * Returns the latest message per patient for this doctor.
+ */
+router.get('/inbox', async (req: Request, res: Response) => {
+  try {
+    // We want the most recent message for each patient the doctor is linked to
+    const messages = await db.raw(\
+      SELECT m.*, u.name as patient_name
+      FROM messages m
+      JOIN users u ON u.id = CASE WHEN m.sender_id = ? THEN m.recipient_id ELSE m.sender_id END
+      WHERE m.id IN (
+        SELECT MAX(id)
+        FROM messages
+        WHERE sender_id = ? OR recipient_id = ?
+        GROUP BY LEAST(sender_id, recipient_id), GREATEST(sender_id, recipient_id)
+      )
+      ORDER BY m.created_at DESC
+    \, [req.user!.id, req.user!.id, req.user!.id]);
+
+    res.json({ data: messages.rows });
+  } catch (error: any) {
+    console.error('Doctor inbox error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Doctor Escalations (Phase 12)
+router.get('/escalations', async (req: Request, res: Response) => {
+  try {
+    // Only escalations for patients linked to this doctor
+    const escalations = await db('chatbot_sessions')
+      .join('users', 'chatbot_sessions.user_id', 'users.id')
+      .join('care_links', 'care_links.patient_id', 'users.id')
+      .where('chatbot_sessions.status', 'escalated')
+      .where('chatbot_sessions.escalation_target', 'doctor')
+      .where('care_links.provider_id', req.user!.id)
+      .select('chatbot_sessions.*', 'users.name as patient_name')
+      .orderBy('started_at', 'desc');
+    res.json({ data: escalations });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 export default router;

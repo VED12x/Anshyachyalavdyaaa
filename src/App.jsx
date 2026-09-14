@@ -9,6 +9,63 @@ import {
   Line, ComposedChart, CartesianGrid
 } from "recharts";
 
+function RelativeDashboard({ token, onLogout }) {
+  // Dummy dashboard for relative (Phase 13)
+  return (
+    <div style={{ padding: 40, fontFamily: "IBM Plex Sans", background: "#F5F6F4", minHeight: "100vh" }}>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 30 }}>
+        <h2>Relative / Caregiver View</h2>
+        <button onClick={onLogout} style={{ padding: "8px 16px", borderRadius: 8, cursor: "pointer" }}>Log out</button>
+      </header>
+      <Card>
+        <p>You are viewing limited patient details (Phase 13).</p>
+      </Card>
+    </div>
+  );
+}
+
+function DoctorDashboard({ token, onLogout }) {
+  // Dummy dashboard for doctor (Phase 12)
+  return (
+    <div style={{ padding: 40, fontFamily: "IBM Plex Sans", background: "#F5F6F4", minHeight: "100vh" }}>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 30 }}>
+        <h2>Doctor Portal</h2>
+        <button onClick={onLogout} style={{ padding: "8px 16px", borderRadius: 8, cursor: "pointer" }}>Log out</button>
+      </header>
+      <div style={{ display: "flex", gap: 20 }}>
+        <Card style={{ flex: 1 }}><h3>Patients List</h3><p>Manage your linked patients.</p></Card>
+        <Card style={{ flex: 1 }}><h3>Inbox</h3><p>Patient messages.</p></Card>
+        <Card style={{ flex: 1 }}><h3>Escalations</h3><p>Chatbot escalations.</p></Card>
+      </div>
+    </div>
+  );
+}
+
+function AdminDashboard({ token, onLogout }) {
+  // Dummy dashboard for admin (Phase 12)
+  return (
+    <div style={{ padding: 40, fontFamily: "IBM Plex Sans", background: "#F5F6F4", minHeight: "100vh" }}>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 30 }}>
+        <h2>Admin Console</h2>
+        <button onClick={onLogout} style={{ padding: "8px 16px", borderRadius: 8, cursor: "pointer" }}>Log out</button>
+      </header>
+      <div style={{ display: "flex", gap: 20 }}>
+        <Card style={{ flex: 1 }}><h3>User Management</h3></Card>
+        <Card style={{ flex: 1 }}><h3>System Health</h3></Card>
+        <Card style={{ flex: 1 }}><h3>Food Database</h3></Card>
+      </div>
+    </div>
+  );
+}
+
+  LayoutGrid, TrendingUp, Pill, Utensils, Users, Settings, Bell,
+  Droplet, Bluetooth, Sparkles, Check, Clock, AlertTriangle, ChevronRight,
+  Send, User, Search, Loader2
+} from "lucide-react";
+  AreaChart, Area, XAxis, YAxis, ResponsiveContainer, ReferenceLine,
+  Line, ComposedChart, CartesianGrid
+} from "recharts";
+
 const FONT_LINK = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap";
 const API_URL = "https://dc360-api.onrender.com";
 
@@ -432,14 +489,14 @@ export default function App() {
 
   const user = parseJwt(token);
   
-  if (user?.role !== 'patient') {
-    return (
-      <div style={{ padding: 40, fontFamily: "IBM Plex Sans", textAlign: "center" }}>
-        <h2>Logged in as {user?.role.toUpperCase()}</h2>
-        <p>This dashboard is under construction (Phases 12/13).</p>
-        <button onClick={() => setToken(null)} style={{ background: "#114B4B", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 8, cursor: "pointer", marginTop: 20 }}>Log out</button>
-      </div>
-    );
+  if (user?.role === 'relative') {
+    return <RelativeDashboard token={token} onLogout={() => setToken(null)} />;
+  }
+  if (user?.role === 'doctor') {
+    return <DoctorDashboard token={token} onLogout={() => setToken(null)} />;
+  }
+  if (user?.role === 'admin') {
+    return <AdminDashboard token={token} onLogout={() => setToken(null)} />;
   }
 
   const Active = NAV.find((n) => n.key === tab).Screen;
@@ -475,6 +532,7 @@ export default function App() {
               <div style={{ fontFamily: "Fraunces", fontSize: 24, fontWeight: 500, color: "#17221F" }}>{title}</div>
               <div style={{ fontFamily: "IBM Plex Sans", fontSize: 12.5, color: "#8A968F", marginTop: 3 }}>{subtitle}</div>
             </div>
+            <button onClick={() => setToken(null)} style={{ background: "transparent", border: "1px solid #E7ECEA", borderRadius: 8, padding: "8px 12px", cursor: "pointer", fontFamily: "IBM Plex Sans" }}>Log out</button>
           </header>
           <div style={{ flex: 1, overflowY: "auto", padding: "22px 32px 40px" }}>
             {data ? <Active /> : <div style={{ padding: 40, textAlign: "center", color: "#8A968F", fontFamily: "IBM Plex Sans" }}>Fetching secure data from Render...</div>}
@@ -484,3 +542,5 @@ export default function App() {
     </DataContext.Provider>
   );
 }
+
+

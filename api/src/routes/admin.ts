@@ -57,4 +57,41 @@ router.get('/users', async (req: Request, res: Response) => {
   }
 });
 
+
+// System Health (Phase 12)
+router.get('/system-health', async (req: Request, res: Response) => {
+  // Proxy to the internal metrics variables or return basic health
+  res.json({
+    data: {
+      status: 'ok',
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString()
+    }
+  });
+});
+
+// Admin Escalations (Phase 12)
+router.get('/escalations', async (req: Request, res: Response) => {
+  try {
+    const escalations = await db('chatbot_sessions')
+      .join('users', 'chatbot_sessions.user_id', 'users.id')
+      .where('status', 'escalated')
+      .where('escalation_target', 'support')
+      .select('chatbot_sessions.*', 'users.name as patient_name', 'users.email')
+      .orderBy('started_at', 'desc');
+    res.json({ data: escalations });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Food Database (Phase 16 prep)
+router.get('/food-database', async (req: Request, res: Response) => {
+  try {
+    const foods = await db('food_items').orderBy('name', 'asc');
+    res.json({ data: foods });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 export default router;

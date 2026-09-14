@@ -20,6 +20,7 @@ import deviceRoutes from './routes/devices';
 import alertRoutes from './routes/alerts';
 import doctorRoutes from './routes/doctor';
 import adminRoutes from './routes/admin';
+import relativeRoutes from './routes/relative';
 import messageRoutes from './routes/messages';
 import careLinkRoutes from './routes/careLinks';
 
@@ -95,6 +96,7 @@ app.use('/devices', authenticate, deviceRoutes);
 app.use('/alerts', authenticate, alertRoutes);
 app.use('/doctor', authenticate, doctorRoutes);
 app.use('/admin', authenticate, adminRoutes);
+app.use('/relative', authenticate, relativeRoutes);
 app.use('/messages', authenticate, messageRoutes);
 app.use('/care-links', authenticate, careLinkRoutes);
 
