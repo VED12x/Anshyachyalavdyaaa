@@ -1,22 +1,11 @@
 services:
-  # Managed PostgreSQL (Standard Postgres, no Timescale needed)
-  - type: psql
-    name: dc360-db
-    plan: free
-    postgresMajorVersion: 15
-
-  # Managed Redis (Render provides this natively)
-  - type: redis
-    name: dc360-redis
-    ipAllowList: []
-    plan: free
-
   # Node.js API Service
   - type: web
     name: dc360-api
     env: node
+    rootDir: api
     buildCommand: npm install && npm run build
-    startCommand: npm run start
+    startCommand: npm run migrate && npm run start
     envVars:
       - key: NODE_ENV
         value: production
@@ -30,7 +19,10 @@ services:
           name: dc360-redis
           property: connectionString
       - key: ML_SERVICE_URL
-        value: https://dc360-ml-service.onrender.com # URL of the Python service
+        fromService:
+          type: web
+          name: dc360-ml-service
+          property: hostport
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
@@ -40,8 +32,21 @@ services:
   - type: web
     name: dc360-ml-service
     env: python
+    rootDir: ml-service
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+
+databases:
+  # Managed PostgreSQL
+  - name: dc360-db
+    plan: free
+    postgresMajorVersion: 15
+
+# Managed Redis
+  # Note: Render free tier Redis is available via the dashboard.
+  # If your Render plan supports it in blueprints:
+  # - name: dc360-redis
+  #   plan: free
