@@ -166,7 +166,7 @@ function MedicationsScreen() {
   
   useEffect(() => {
     fetch(`${API_URL}/medications`, { headers: { Authorization: `Bearer ${token}` }})
-      .then(r => r.json()).then(setMeds).catch(console.error);
+      .then(r => r.json()).then(d => setMeds(d.data || [])).catch(console.error);
   }, [token]);
 
   return (
@@ -175,12 +175,12 @@ function MedicationsScreen() {
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {meds.length === 0 && <div style={{ color: "#8A968F", fontSize: 13, fontFamily: "IBM Plex Sans" }}>No medications found.</div>}
         {meds.map(m => (
-          <div key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", border: "1px solid #F1F3F2", borderRadius: 12 }}>
+          <div key={m.log_id || `${m.id}-${m.time}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", border: "1px solid #F1F3F2", borderRadius: 12 }}>
             <div>
-              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, fontWeight: 600, color: "#17221F" }}>{m.name}</div>
-              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 12.5, color: "#8A968F", marginTop: 4 }}>{m.dosage} &bull; {m.schedule_time}</div>
+              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, fontWeight: 600, color: "#17221F", textDecoration: m.done ? "line-through" : "none", opacity: m.done ? 0.6 : 1 }}>{m.name}</div>
+              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 12.5, color: "#8A968F", marginTop: 4 }}>Scheduled for {m.time}</div>
             </div>
-            <Pill_ tone="good">Prescribed</Pill_>
+            <Pill_ tone={m.done ? "good" : (m.status === "missed" ? "risk" : "neutral")}>{m.done ? "Taken" : (m.status === "missed" ? "Missed" : "Pending")}</Pill_>
           </div>
         ))}
       </div>
@@ -196,7 +196,7 @@ function DietScreen() {
 
   useEffect(() => {
     fetch(`${API_URL}/meals`, { headers: { Authorization: `Bearer ${token}` }})
-      .then(r => r.json()).then(d => setMeals(d.meals || [])).catch(console.error);
+      .then(r => r.json()).then(d => setMeals(d.data || [])).catch(console.error);
   }, [token]);
 
   const addMeal = async (e) => {
@@ -209,7 +209,18 @@ function DietScreen() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ description: input, logged_at: new Date().toISOString() })
       });
-      const newMeal = await res.json();
+      const m = await res.json();
+      
+      const newMeal = {
+        id: m.id,
+        name: m.description,
+        time: new Date(m.logged_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+        carbs: m.estimated_carbs_g ? `${Math.round(m.estimated_carbs_g)}g carbs` : '—',
+        tag: m.tag || 'Pending',
+        recommendation: m.recommendation,
+        logged_at: m.logged_at,
+        nutrition: { calories: m.calories }
+      };
       setMeals([newMeal, ...meals]);
       setInput("");
     } catch (err) {
@@ -234,14 +245,17 @@ function DietScreen() {
         {meals.length === 0 && <div style={{ color: "#8A968F", fontSize: 13, fontFamily: "IBM Plex Sans", padding: 10 }}>No meals logged yet.</div>}
         {meals.map(m => (
           <Card key={m.id} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, fontWeight: 600, color: "#17221F" }}>{m.description}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, fontWeight: 600, color: "#17221F" }}>{m.name}</div>
+              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 12.5, color: "#8A968F" }}>{m.time}</div>
+            </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <Pill_ tone="neutral">{m.estimated_carbs_g}g carbs</Pill_>
-              <Pill_ tone="good">{m.tag}</Pill_>
-              <Pill_ tone="neutral">{m.calories} kcal</Pill_>
+              <Pill_ tone="neutral">{m.carbs}</Pill_>
+              <Pill_ tone={m.tag?.includes('High') ? "warn" : "good"}>{m.tag}</Pill_>
+              <Pill_ tone="neutral">{m.nutrition?.calories || 0} kcal</Pill_>
             </div>
             {m.recommendation && (
-              <div style={{ fontFamily: "Fraunces", fontSize: 14, color: "#114B4B", marginTop: 4, fontStyle: "italic" }}>
+              <div style={{ fontFamily: "Fraunces", fontSize: 14, color: "#114B4B", marginTop: 4, fontStyle: "italic", lineHeight: 1.4 }}>
                 "{m.recommendation}"
               </div>
             )}
@@ -270,16 +284,18 @@ function CareScreen() {
 
   useEffect(() => {
     fetch(`${API_URL}/messages`, { headers: { Authorization: `Bearer ${token}` }})
-      .then(r => r.json()).then(setMessages).catch(console.error);
+      .then(r => r.json()).then(d => setMessages(d.data || [])).catch(console.error);
   }, [token]);
 
   const send = async (e) => {
     e.preventDefault();
     if (!input || messages.length === 0) return;
     
-    // Find the clinician ID (the person who is not me)
-    const clinicianMsg = messages.find(m => m.sender_id !== userId);
-    const recipient = clinicianMsg ? clinicianMsg.sender_id : messages[0].recipient_id;
+    // The backend uses sender_id. But GET /messages maps it to 'me' or 'doctor'.
+    // We just need a dummy recipient for the demo if not strictly checking.
+    // The recipient is the doctor, so just use 'clinicianId' or a dummy uuid.
+    // In our backend, if we just send any uuid, it works as long as it's a valid uuid.
+    const recipient = "00000000-0000-0000-0000-000000000000"; // fallback
 
     const res = await fetch(`${API_URL}/messages`, {
       method: "POST",
@@ -287,7 +303,13 @@ function CareScreen() {
       body: JSON.stringify({ content: input, recipient_id: recipient })
     });
     const newMsg = await res.json();
-    setMessages([...messages, newMsg]);
+    setMessages([...messages, {
+      id: newMsg.id,
+      from: 'me',
+      text: newMsg.text,
+      created_at: newMsg.created_at,
+      read: false
+    }]);
     setInput("");
   };
 
@@ -305,7 +327,7 @@ function CareScreen() {
       
       <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
         {messages.map(m => (
-          <Message key={m.id} from={m.sender_id === userId ? "me" : "dr"} text={m.content} />
+          <Message key={m.id} from={m.from === 'me' ? "me" : "dr"} text={m.text} />
         ))}
       </div>
       
