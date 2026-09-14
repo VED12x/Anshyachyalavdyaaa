@@ -197,8 +197,8 @@ export default function App() {
         body: JSON.stringify({ email: "patient@demo.com", password: "password123" })
       });
       const d = await res.json();
-      if (d.accessToken) {
-        setToken(d.accessToken);
+      if (d.access_token) {
+        setToken(d.access_token);
       } else {
         alert("Login failed");
       }
