@@ -41,7 +41,7 @@ function RelativeDashboard({ token, onLogout }) {
           <div style={{ display: "flex", gap: 20 }}>
             <Card style={{ flex: 1 }}>
               <h3>Current Glucose</h3>
-              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || '�'} mg/dL</p>
+              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || '—'} mg/dL</p>
             </Card>
             <Card style={{ flex: 1 }}>
               <h3>Recent Alerts</h3>
@@ -238,10 +238,10 @@ function OverviewScreen() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", gap: 16 }}>
-        <StatCard label="Current glucose" value={data.current_glucose?.value || "—"} unit="mg/dL" tone={{ tone: "good", label: "In range" }} icon={Droplet} />
+        <StatCard label="Current glucose" value={data.current_glucose?.value || "â€”"} unit="mg/dL" tone={{ tone: "good", label: "In range" }} icon={Droplet} />
         <StatCard label="Time in range (7d)" value={data.time_in_range || "0"} unit="%" tone={{ tone: "good", label: "Stable" }} icon={TrendingUp} />
-        <StatCard label="Estimated HbA1c" value={data.estimated_hba1c || "—"} unit="%" tone={{ tone: "warn", label: "Watch trend" }} icon={Sparkles} />
-        <StatCard label="Adherence" value={data.adherence || "—"} unit="%" tone={{ tone: "good", label: "On track" }} icon={Pill} />
+        <StatCard label="Estimated HbA1c" value={data.estimated_hba1c || "â€”"} unit="%" tone={{ tone: "warn", label: "Watch trend" }} icon={Sparkles} />
+        <StatCard label="Adherence" value={data.adherence || "â€”"} unit="%" tone={{ tone: "good", label: "On track" }} icon={Pill} />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18, alignItems: "start" }}>
@@ -317,7 +317,7 @@ function TrendsScreen() {
         </ResponsiveContainer>
       </Card>
       <div style={{ display: "flex", gap: 18 }}>
-        <StatCard label="Avg. glucose (7d)" value={data.avg_glucose_7d || "—"} unit="mg/dL" icon={Droplet} />
+        <StatCard label="Avg. glucose (7d)" value={data.avg_glucose_7d || "â€”"} unit="mg/dL" icon={Droplet} />
         <StatCard label="Hypo events (7d)" value={data.hypo_events_7d || 0} unit="events" icon={AlertTriangle} />
         <StatCard label="Hyper events (7d)" value={data.hyper_events_7d || 0} unit="events" icon={TrendingUp} />
       </div>
@@ -380,7 +380,7 @@ function DietScreen() {
         id: m.id,
         name: m.description,
         time: new Date(m.logged_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-        carbs: m.estimated_carbs_g ? `${Math.round(m.estimated_carbs_g)}g carbs` : '—',
+        carbs: m.estimated_carbs_g ? `${Math.round(m.estimated_carbs_g)}g carbs` : 'â€”',
         tag: m.tag || 'Pending',
         recommendation: m.recommendation,
         logged_at: m.logged_at,
@@ -443,63 +443,104 @@ function Message({ from, text }) {
 }
 
 function CareScreen() {
-  const { token, userId } = useContext(DataContext);
+  const { token } = useContext(DataContext);
+  const [session, setSession] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
+  const [menus, setMenus] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_URL}/messages`, { headers: { Authorization: `Bearer ${token}` }})
-      .then(r => r.json()).then(d => setMessages(d.data || [])).catch(console.error);
+    fetch(`${API_URL}/chatbot/sessions`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    .then(r => r.json())
+    .then(d => {
+      const sessionId = d.data?.id;
+      if (!sessionId) throw new Error("No session");
+      return fetch(`${API_URL}/chatbot/sessions/${sessionId}`, { headers: { Authorization: `Bearer ${token}` } });
+    })
+    .then(r => r.json())
+    .then(d => {
+      setSession(d.data.session);
+      setMessages(d.data.messages);
+      setMenus(d.data.menus);
+    })
+    .catch(e => console.error(e));
   }, [token]);
 
-  const send = async (e) => {
-    e.preventDefault();
-    if (!input || messages.length === 0) return;
-    
-    // The backend uses sender_id. But GET /messages maps it to 'me' or 'doctor'.
-    // We just need a dummy recipient for the demo if not strictly checking.
-    // The recipient is the doctor, so just use 'clinicianId' or a dummy uuid.
-    // In our backend, if we just send any uuid, it works as long as it's a valid uuid.
-    const recipient = "00000000-0000-0000-0000-000000000000"; // fallback
-
-    const res = await fetch(`${API_URL}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ content: input, recipient_id: recipient })
-    });
-    const newMsg = await res.json();
-    setMessages([...messages, {
-      id: newMsg.id,
-      from: 'me',
-      text: newMsg.text,
-      created_at: newMsg.created_at,
-      read: false
-    }]);
-    setInput("");
+  const sendMessage = async (e, menuId = null) => {
+    if (e) e.preventDefault();
+    if (!input && !menuId) return;
+    setLoading(true);
+    const payload = menuId ? { menu_id: menuId } : { content: input };
+    try {
+      const res = await fetch(`${API_URL}/chatbot/sessions/${session.id}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setMessages([...messages, d.data.userMessage, d.data.botMessage]);
+        setSession(d.data.session);
+      } else {
+        alert(d.error);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setInput('');
+    setLoading(false);
   };
 
+  if (!session) return <div style={{ padding: 40, textAlign: 'center' }}>Connecting to Support...</div>;
+
   return (
-    <Card style={{ display: "flex", flexDirection: "column", height: 500, padding: 0, overflow: "hidden" }}>
-      <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #E7ECEA", display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#E7EFEE", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <Card style={{ display: 'flex', flexDirection: 'column', height: 500, padding: 0, overflow: 'hidden' }}>
+      <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid #E7ECEA', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#E7EFEE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <User size={20} color="#114B4B" />
         </div>
         <div>
-          <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, fontWeight: 600, color: "#17221F" }}>Care Team Chat</div>
-          <div style={{ fontFamily: "IBM Plex Sans", fontSize: 12, color: "#8A968F" }}>Secure messaging</div>
+          <div style={{ fontFamily: 'IBM Plex Sans', fontSize: 14, fontWeight: 600, color: '#17221F' }}>DC360 Support Chat</div>
+          <div style={{ fontFamily: 'IBM Plex Sans', fontSize: 12, color: '#8A968F' }}>
+            {session.status === 'bot_active' ? 'Automated Assistant' : `Escalated to ${session.escalation_target}`}
+          </div>
         </div>
       </div>
       
-      <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
         {messages.map(m => (
-          <Message key={m.id} from={m.from === 'me' ? "me" : "dr"} text={m.text} />
+          <Message key={m.id} from={m.sender === 'user' ? 'me' : 'dr'} text={m.content} />
         ))}
+        {session.status === 'bot_active' && menus.length > 0 && (
+          <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
+            {menus.map(menu => (
+              <button 
+                key={menu.id} 
+                onClick={() => sendMessage(null, menu.id)}
+                disabled={loading}
+                style={{ background: '#E7EFEE', color: '#114B4B', border: 'none', padding: '10px 16px', borderRadius: 16, cursor: 'pointer', fontFamily: 'IBM Plex Sans', fontWeight: 500 }}
+              >
+                {menu.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       
-      <div style={{ padding: 20, borderTop: "1px solid #E7ECEA" }}>
-        <form onSubmit={send} style={{ display: "flex", gap: 10 }}>
-          <input value={input} onChange={e => setInput(e.target.value)} placeholder="Message your doctor..." style={{ flex: 1, padding: "12px 16px", borderRadius: 20, border: "1px solid #E7ECEA", fontFamily: "IBM Plex Sans", fontSize: 13 }} />
-          <button type="submit" style={{ background: "#114B4B", color: "#fff", border: "none", borderRadius: "50%", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+      <div style={{ padding: 20, borderTop: '1px solid #E7ECEA' }}>
+        <form onSubmit={sendMessage} style={{ display: 'flex', gap: 10 }}>
+          <input 
+            value={input} 
+            onChange={e => setInput(e.target.value)} 
+            disabled={loading || session.status !== 'bot_active'}
+            placeholder={session.status === 'bot_active' ? 'Or type your issue...' : 'Session escalated. A human will respond.'} 
+            style={{ flex: 1, padding: '12px 16px', borderRadius: 20, border: '1px solid #E7ECEA', fontFamily: 'IBM Plex Sans', fontSize: 13 }} 
+          />
+          <button type="submit" disabled={loading || session.status !== 'bot_active'} style={{ background: '#114B4B', color: '#fff', border: 'none', borderRadius: '50%', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, opacity: session.status !== 'bot_active' ? 0.5 : 1 }}>
             <Send size={16} color="#fff" />
           </button>
         </form>

@@ -148,4 +148,27 @@ router.get('/patients/:id', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// Chatbot Menu (Phase 14)
+router.get('/chatbot-menu', async (req: Request, res: Response) => {
+  try {
+    const menus = await db('chatbot_menu_config').orderBy('label', 'asc');
+    res.json({ data: menus });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.patch('/chatbot-menu/:id', async (req: Request, res: Response) => {
+  try {
+    const { label, response_text, action } = req.body;
+    const [updated] = await db('chatbot_menu_config')
+      .where({ id: req.params.id })
+      .update({ label, response_text, action })
+      .returning('*');
+    res.json({ data: updated });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 export default router;

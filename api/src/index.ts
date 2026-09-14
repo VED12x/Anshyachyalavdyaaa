@@ -21,6 +21,7 @@ import alertRoutes from './routes/alerts';
 import doctorRoutes from './routes/doctor';
 import adminRoutes from './routes/admin';
 import relativeRoutes from './routes/relative';
+import chatbotRoutes from './routes/chatbot';
 import messageRoutes from './routes/messages';
 import careLinkRoutes from './routes/careLinks';
 
@@ -97,6 +98,7 @@ app.use('/alerts', authenticate, alertRoutes);
 app.use('/doctor', authenticate, doctorRoutes);
 app.use('/admin', authenticate, adminRoutes);
 app.use('/relative', authenticate, relativeRoutes);
+app.use('/chatbot', authenticate, chatbotRoutes);
 app.use('/messages', authenticate, messageRoutes);
 app.use('/care-links', authenticate, careLinkRoutes);
 
