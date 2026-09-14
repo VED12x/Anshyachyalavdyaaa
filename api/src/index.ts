@@ -18,7 +18,8 @@ import activityRoutes from './routes/activity';
 import dashboardRoutes from './routes/dashboard';
 import deviceRoutes from './routes/devices';
 import alertRoutes from './routes/alerts';
-import clinicianRoutes from './routes/clinician';
+import doctorRoutes from './routes/doctor';
+import adminRoutes from './routes/admin';
 import messageRoutes from './routes/messages';
 import careLinkRoutes from './routes/careLinks';
 
@@ -92,7 +93,8 @@ app.use('/activity-logs', authenticate, activityRoutes);
 app.use('/dashboard', authenticate, dashboardRoutes);
 app.use('/devices', authenticate, deviceRoutes);
 app.use('/alerts', authenticate, alertRoutes);
-app.use('/clinician', authenticate, clinicianRoutes);
+app.use('/doctor', authenticate, doctorRoutes);
+app.use('/admin', authenticate, adminRoutes);
 app.use('/messages', authenticate, messageRoutes);
 app.use('/care-links', authenticate, careLinkRoutes);
 

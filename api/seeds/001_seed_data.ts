@@ -19,8 +19,9 @@ export async function seed(knex: Knex): Promise<void> {
 
   // --- Users ---
   const patientId = uuidv4();
-  const clinicianId = uuidv4();
-  const caregiverId = uuidv4();
+  const doctorId = uuidv4();
+  const relativeId = uuidv4();
+  const adminId = uuidv4();
 
   await knex('users').insert([
     {
@@ -32,38 +33,47 @@ export async function seed(knex: Knex): Promise<void> {
       diabetes_type: 'type2',
     },
     {
-      id: clinicianId,
-      role: 'clinician',
+      id: doctorId,
+      role: 'doctor',
       email: 'doctor@demo.com',
       password_hash: passwordHash,
       name: 'Dr. Utkarsha Pacharney',
       diabetes_type: null,
     },
     {
-      id: caregiverId,
-      role: 'caregiver',
-      email: 'caregiver@demo.com',
+      id: relativeId,
+      role: 'relative',
+      email: 'relative@demo.com',
       password_hash: passwordHash,
       name: 'Meera Sharma',
       diabetes_type: null,
     },
+    {
+      id: adminId,
+      role: 'admin',
+      email: 'admin@demo.com',
+      password_hash: passwordHash,
+      name: 'System Admin',
+      diabetes_type: null,
+    }
   ]);
 
   // --- Care Links ---
   const careLinkId = uuidv4();
+
   await knex('care_links').insert([
     {
       id: careLinkId,
       patient_id: patientId,
-      provider_id: clinicianId,
-      provider_role: 'clinician',
+      provider_id: doctorId,
+      provider_role: 'doctor',
       status: 'active',
     },
     {
       id: uuidv4(),
       patient_id: patientId,
-      provider_id: caregiverId,
-      provider_role: 'caregiver',
+      provider_id: relativeId,
+      provider_role: 'relative',
       status: 'active',
     },
   ]);
@@ -240,7 +250,7 @@ export async function seed(knex: Knex): Promise<void> {
   await knex('messages').insert([
     {
       id: uuidv4(),
-      sender_id: clinicianId,
+      sender_id: doctorId,
       recipient_id: patientId,
       content: 'Your time-in-range improved this week — nice work. Let\'s keep the dinner portion smaller through the weekend.',
       read: true,
@@ -249,7 +259,7 @@ export async function seed(knex: Knex): Promise<void> {
     {
       id: uuidv4(),
       sender_id: patientId,
-      recipient_id: clinicianId,
+      recipient_id: doctorId,
       content: 'Will do. Should I still take the 8pm dose if I eat earlier?',
       read: true,
       created_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour ago
@@ -258,8 +268,8 @@ export async function seed(knex: Knex): Promise<void> {
 
   console.log('✅ Seed data inserted successfully');
   console.log(`   Patient: patient@demo.com (${patientId})`);
-  console.log(`   Clinician: doctor@demo.com (${clinicianId})`);
-  console.log(`   Caregiver: caregiver@demo.com (${caregiverId})`);
+  console.log(`   Clinician: doctor@demo.com (${doctorId})`);
+  console.log(`   Caregiver: caregiver@demo.com (${relativeId})`);
   console.log(`   Glucose readings: ${glucoseReadings.length} records (7 days)`);
   console.log(`   Care link: active between patient and clinician`);
 }

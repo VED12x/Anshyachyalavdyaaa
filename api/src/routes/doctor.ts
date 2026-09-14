@@ -9,7 +9,7 @@ const router = Router();
  * GET /clinician/patients
  * List all patients linked to the authenticated clinician, with quick-glance status.
  */
-router.get('/patients', authenticate, requireRole(['clinician']), async (req: Request, res: Response) => {
+router.get('/patients', authenticate, requireRole(['doctor']), async (req: Request, res: Response) => {
   try {
     // Get all active care links for this clinician
     const links = await db('care_links')

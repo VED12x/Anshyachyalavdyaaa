@@ -204,7 +204,7 @@ describe('Care Link Authorization', () => {
       email: clinicianEmail,
       password: 'TestPassword123!',
       name: 'CL Clinician',
-      role: 'clinician',
+      role: 'doctor',
     });
     const cLogin = await request(app).post('/auth/login').send({
       email: clinicianEmail,
@@ -219,7 +219,7 @@ describe('Care Link Authorization', () => {
       email: unlinkedEmail,
       password: 'TestPassword123!',
       name: 'Unlinked Clinician',
-      role: 'clinician',
+      role: 'doctor',
     });
     const uLogin = await request(app).post('/auth/login').send({
       email: unlinkedEmail,
@@ -231,20 +231,20 @@ describe('Care Link Authorization', () => {
     const linkRes = await request(app)
       .post('/care-links')
       .set('Authorization', `Bearer ${patientToken}`)
-      .send({ patient_id: clinicianId, provider_role: 'clinician' });
+      .send({ patient_id: clinicianId, provider_role: 'doctor' });
     careLinkId = linkRes.body.id;
   });
 
   it('Clinician with active care link should access patient report (200)', async () => {
     const res = await request(app)
-      .get(`/clinician/patients/${patientId}/report`)
+      .get(`/doctor/patients/${patientId}/report`)
       .set('Authorization', `Bearer ${clinicianToken}`);
     expect(res.status).toBe(200);
   });
 
   it('Clinician without care link should be denied (403)', async () => {
     const res = await request(app)
-      .get(`/clinician/patients/${patientId}/report`)
+      .get(`/doctor/patients/${patientId}/report`)
       .set('Authorization', `Bearer ${unlinkedClinicianToken}`);
     expect(res.status).toBe(403);
   });
@@ -258,7 +258,7 @@ describe('Care Link Authorization', () => {
 
     // Immediate re-request should fail
     const res = await request(app)
-      .get(`/clinician/patients/${patientId}/report`)
+      .get(`/doctor/patients/${patientId}/report`)
       .set('Authorization', `Bearer ${clinicianToken}`);
     expect(res.status).toBe(403);
   });

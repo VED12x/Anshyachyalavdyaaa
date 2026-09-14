@@ -8,7 +8,7 @@ declare global {
     interface Request {
       user?: {
         id: string;
-        role: 'patient' | 'caregiver' | 'clinician';
+        role: 'patient' | 'relative' | 'doctor' | 'admin';
         email: string;
       };
     }
@@ -32,7 +32,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
   try {
     const decoded = jwt.verify(token, config.jwtSecret) as {
       id: string;
-      role: 'patient' | 'caregiver' | 'clinician';
+      role: 'patient' | 'relative' | 'doctor' | 'admin';
       email: string;
     };
 
