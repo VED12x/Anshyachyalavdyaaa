@@ -68,7 +68,7 @@ export class MLServiceClient {
         throw new Error(`ML service forecast error: ${response.status}`);
       }
 
-      return await response.json();
+      return (await response.json()) as ForecastResponse;
     } catch (error) {
       console.error('ML forecast service error:', error);
       // Return a safe fallback if ML service is down
@@ -105,7 +105,7 @@ export class MLServiceClient {
         throw new Error(`ML service risk error: ${response.status}`);
       }
 
-      return await response.json();
+      return (await response.json()) as RiskResponse;
     } catch (error) {
       console.error('ML risk service error:', error);
       return {
@@ -136,7 +136,7 @@ export class MLServiceClient {
         throw new Error(`ML service meal analysis error: ${response.status}`);
       }
 
-      return await response.json();
+      return (await response.json()) as MealAnalysisResponse;
     } catch (error) {
       console.error('ML meal analysis service error:', error);
       // Return safe defaults if ML service is down
