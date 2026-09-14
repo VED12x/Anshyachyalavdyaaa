@@ -39,7 +39,7 @@ router.get('/patients/:id/summary', async (req: Request, res: Response) => {
       .limit(5)
       .select('type', 'message', 'created_at'); // No raw probabilities
 
-    let meals = [];
+    let meals: any[] = [];
     if (link.share_diet_detail) {
       meals = await db('meals')
         .where({ user_id: patientId })
@@ -76,3 +76,4 @@ router.get('/patients', async (req: Request, res: Response) => {
   }
 });
 export default router;
+

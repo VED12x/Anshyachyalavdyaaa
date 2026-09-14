@@ -41,7 +41,7 @@ function RelativeDashboard({ token, onLogout }) {
           <div style={{ display: "flex", gap: 20 }}>
             <Card style={{ flex: 1 }}>
               <h3>Current Glucose</h3>
-              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || 'â€”'} mg/dL</p>
+              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || 'Ã¢â‚¬â€'} mg/dL</p>
             </Card>
             <Card style={{ flex: 1 }}>
               <h3>Recent Alerts</h3>
@@ -238,10 +238,10 @@ function OverviewScreen() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", gap: 16 }}>
-        <StatCard label="Current glucose" value={data.current_glucose?.value || "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} unit="mg/dL" tone={{ tone: "good", label: "In range" }} icon={Droplet} />
+        <StatCard label="Current glucose" value={data.current_glucose?.value || "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"} unit="mg/dL" tone={{ tone: "good", label: "In range" }} icon={Droplet} />
         <StatCard label="Time in range (7d)" value={data.time_in_range || "0"} unit="%" tone={{ tone: "good", label: "Stable" }} icon={TrendingUp} />
-        <StatCard label="Estimated HbA1c" value={data.estimated_hba1c || "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} unit="%" tone={{ tone: "warn", label: "Watch trend" }} icon={Sparkles} />
-        <StatCard label="Adherence" value={data.adherence || "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} unit="%" tone={{ tone: "good", label: "On track" }} icon={Pill} />
+        <StatCard label="Estimated HbA1c" value={data.estimated_hba1c || "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"} unit="%" tone={{ tone: "warn", label: "Watch trend" }} icon={Sparkles} />
+        <StatCard label="Adherence" value={data.adherence || "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"} unit="%" tone={{ tone: "good", label: "On track" }} icon={Pill} />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18, alignItems: "start" }}>
@@ -294,80 +294,6 @@ function OverviewScreen() {
     </div>
   );
 }
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetch(`${API_URL}/meals`, { headers: { Authorization: `Bearer ${token}` }})
-      .then(r => r.json()).then(d => setMeals(d.data || [])).catch(console.error);
-  }, [token]);
-
-  const addMeal = async (e) => {
-    e.preventDefault();
-    if (!input) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/meals`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ description: input, logged_at: new Date().toISOString() })
-      });
-      const m = await res.json();
-      
-      const newMeal = {
-        id: m.id,
-        name: m.description,
-        time: new Date(m.logged_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-        carbs: m.estimated_carbs_g ? `${Math.round(m.estimated_carbs_g)}g carbs` : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â',
-        tag: m.tag || 'Pending',
-        recommendation: m.recommendation,
-        logged_at: m.logged_at,
-        nutrition: { calories: m.calories }
-      };
-      setMeals([newMeal, ...meals]);
-      setInput("");
-    } catch (err) {
-      console.error(err);
-    }
-    setLoading(false);
-  };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      <Card>
-        <SectionTitle>Log a Meal</SectionTitle>
-        <form onSubmit={addMeal} style={{ display: "flex", gap: 10 }}>
-          <input value={input} onChange={e => setInput(e.target.value)} placeholder="What did you eat? e.g., 2 rotis with dal" style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "1px solid #E7ECEA", fontFamily: "IBM Plex Sans", fontSize: 13 }} />
-          <button type="submit" disabled={loading} style={{ background: "#114B4B", color: "#fff", border: "none", padding: "0 20px", borderRadius: 10, fontFamily: "IBM Plex Sans", fontWeight: 600, cursor: "pointer" }}>
-            {loading ? "Analyzing via ML..." : "Log & Analyze"}
-          </button>
-        </form>
-      </Card>
-      
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {meals.length === 0 && <div style={{ color: "#8A968F", fontSize: 13, fontFamily: "IBM Plex Sans", padding: 10 }}>No meals logged yet.</div>}
-        {meals.map(m => (
-          <Card key={m.id} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, fontWeight: 600, color: "#17221F" }}>{m.name}</div>
-              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 12.5, color: "#8A968F" }}>{m.time}</div>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <Pill_ tone="neutral">{m.carbs}</Pill_>
-              <Pill_ tone={m.tag?.includes('High') ? "warn" : "good"}>{m.tag}</Pill_>
-              <Pill_ tone="neutral">{m.nutrition?.calories || 0} kcal</Pill_>
-            </div>
-            {m.recommendation && (
-              <div style={{ fontFamily: "Fraunces", fontSize: 14, color: "#114B4B", marginTop: 4, fontStyle: "italic", lineHeight: 1.4 }}>
-                "{m.recommendation}"
-              </div>
-            )}
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function Message({ from, text }) {
   const mine = from === "me";
@@ -408,7 +334,7 @@ function DietScreen() {
         id: m.id,
         name: m.description,
         time: new Date(m.logged_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-        carbs: m.estimated_carbs_g ? `g carbs` : '—',
+        carbs: m.estimated_carbs_g ? `g carbs` : 'â€”',
         tag: m.tag || 'Pending',
         recommendation: m.recommendation,
         logged_at: m.logged_at,

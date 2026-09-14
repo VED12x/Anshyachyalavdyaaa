@@ -61,7 +61,7 @@ router.get('/patients', authenticate, requireRole(['doctor']), async (req: Reque
         try {
           if (historyForML.length >= 2) {
             // Safe to call ML service
-            const mlService = (await import('../services/mlService')).default;
+            const mlService = (await import('../services/mlService')).mlService;
             const risk = await mlService.getRiskPrediction(historyForML);
             riskScore = risk.hyper_risk;
           }
@@ -249,3 +249,4 @@ router.get('/escalations', async (req: Request, res: Response) => {
   }
 });
 export default router;
+
