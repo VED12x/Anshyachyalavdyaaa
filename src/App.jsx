@@ -679,7 +679,7 @@ function CareScreen() {
     })
     .catch(e => console.error(e));
 
-    fetch(`${API_URL}/careLinks`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_URL}/care-links`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => {
         if (d.data?.length > 0) {

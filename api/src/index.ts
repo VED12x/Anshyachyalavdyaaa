@@ -25,6 +25,7 @@ import chatbotRoutes from './routes/chatbot';
 import messageRoutes from './routes/messages';
 import careLinkRoutes from './routes/careLinks';
 import callRoutes from './routes/calls';
+import callRoutes from './routes/calls';
 
 const app = express();
 const httpServer = createServer(app);
@@ -102,6 +103,7 @@ app.use('/relative', authenticate, relativeRoutes);
 app.use('/chatbot', authenticate, chatbotRoutes);
 app.use('/messages', authenticate, messageRoutes);
 app.use('/care-links', authenticate, careLinkRoutes);
+app.use('/calls', authenticate, callRoutes);
 
 // --- 404 Handler ---
 app.use((_req, res) => {
