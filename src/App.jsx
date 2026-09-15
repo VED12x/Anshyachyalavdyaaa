@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+﻿import React, { useState, useEffect, createContext, useContext } from "react";
 import {
   LayoutGrid, TrendingUp, Pill, Utensils, Users, Settings, Bell,
   Droplet, Bluetooth, Sparkles, Check, Clock, AlertTriangle, ChevronRight,
@@ -453,7 +453,7 @@ function MedicationsScreen() {
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 15 }}>
         <SectionTitle>Your Medications</SectionTitle>
-        <Pill_ tone="good">🔥 5 Day Streak!</Pill_>
+        <Pill_ tone="good">ðŸ”¥ 5 Day Streak!</Pill_>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {meds.length === 0 && <div style={{ color: "#8A968F", fontSize: 13, fontFamily: "IBM Plex Sans" }}>No medications found.</div>}
@@ -499,7 +499,7 @@ function DietScreen() {
         id: m.id,
         name: m.description,
         time: new Date(m.logged_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-        carbs: m.estimated_carbs_g ? `${Math.round(m.estimated_carbs_g)}g carbs` : 'â€”',
+        carbs: m.estimated_carbs_g ? `${Math.round(m.estimated_carbs_g)}g carbs` : 'Ã¢â‚¬â€',
         tag: m.tag || 'Pending',
         recommendation: m.recommendation,
         logged_at: m.logged_at,
@@ -579,48 +579,91 @@ function DietScreen() {
 }
 
 function CareScreen() {
-  const { token } = useContext(DataContext);
+  const { token, userId } = useContext(DataContext);
+  const [mode, setMode] = useState('bot');
+  const [providerId, setProviderId] = useState(null);
+  
   const [session, setSession] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [botMessages, setBotMessages] = useState([]);
   const [menus, setMenus] = useState([]);
+  const [drMessages, setDrMessages] = useState([]);
+  
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_URL}/chatbot/sessions`, {
+    fetch(${API_URL}/chatbot/sessions, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: Bearer  }
     })
     .then(r => r.json())
     .then(d => {
       const sessionId = d.data?.id;
       if (!sessionId) throw new Error("No session");
-      return fetch(`${API_URL}/chatbot/sessions/${sessionId}`, { headers: { Authorization: `Bearer ${token}` } });
+      return fetch(${API_URL}/chatbot/sessions/, { headers: { Authorization: Bearer  } });
     })
     .then(r => r.json())
     .then(d => {
       setSession(d.data.session);
-      setMessages(d.data.messages);
+      setBotMessages(d.data.messages);
       setMenus(d.data.menus);
     })
     .catch(e => console.error(e));
+
+    fetch(${API_URL}/careLinks, { headers: { Authorization: Bearer  } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.data?.length > 0) {
+          const pid = d.data[0].provider_id;
+          setProviderId(pid);
+          return fetch(${API_URL}/messages?with_user_id=12548, { headers: { Authorization: Bearer  } });
+        }
+      })
+      .then(r => r && r.json())
+      .then(d => {
+        if (d?.data) setDrMessages(d.data);
+      })
+      .catch(e => console.error(e));
   }, [token]);
 
-  const sendMessage = async (e, menuId = null) => {
+  const sendBotMessage = async (e, menuId = null) => {
     if (e) e.preventDefault();
     if (!input && !menuId) return;
     setLoading(true);
     const payload = menuId ? { menu_id: menuId } : { content: input };
     try {
-      const res = await fetch(`${API_URL}/chatbot/sessions/${session.id}/messages`, {
+      const res = await fetch(${API_URL}/chatbot/sessions//messages, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: Bearer  },
         body: JSON.stringify(payload)
       });
       const d = await res.json();
       if (res.ok) {
-        setMessages([...messages, d.data.userMessage, d.data.botMessage]);
+        setBotMessages([...botMessages, d.data.userMessage, d.data.botMessage]);
         setSession(d.data.session);
+      } else {
+        alert(d.error);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setInput('');
+    setLoading(false);
+  };
+
+  const sendDrMessage = async (e) => {
+    e.preventDefault();
+    if (!input || !providerId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(${API_URL}/messages, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: Bearer  },
+        body: JSON.stringify({ recipient_id: providerId, content: input })
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setDrMessages([...drMessages, d]);
       } else {
         alert(d.error);
       }
@@ -635,57 +678,74 @@ function CareScreen() {
 
   return (
     <Card style={{ display: 'flex', flexDirection: 'column', height: 500, padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid #E7ECEA', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#E7EFEE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <User size={20} color="#114B4B" />
-        </div>
-        <div>
-          <div style={{ fontFamily: 'IBM Plex Sans', fontSize: 14, fontWeight: 600, color: '#17221F' }}>DC360 Support Chat</div>
-          <div style={{ fontFamily: 'IBM Plex Sans', fontSize: 12, color: '#8A968F' }}>
-            {session.status === 'bot_active' ? 'Automated Assistant' : `Escalated to ${session.escalation_target}`}
+      <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid #E7ECEA', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#E7EFEE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <User size={20} color="#114B4B" />
           </div>
+          <div>
+            <div style={{ fontFamily: 'IBM Plex Sans', fontSize: 14, fontWeight: 600, color: '#17221F' }}>
+              {mode === 'bot' ? 'DC360 Support Chat' : 'My Doctor'}
+            </div>
+            <div style={{ fontFamily: 'IBM Plex Sans', fontSize: 12, color: '#8A968F' }}>
+              {mode === 'bot' ? (session.status === 'bot_active' ? 'Automated Assistant' : Escalated to ) : 'Direct Message'}
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, background: '#F5F6F4', padding: 4, borderRadius: 20 }}>
+          <button onClick={() => setMode('bot')} style={{ background: mode === 'bot' ? '#fff' : 'transparent', border: 'none', padding: '6px 12px', borderRadius: 16, cursor: 'pointer', fontWeight: 600, color: mode === 'bot' ? '#114B4B' : '#8A968F' }}>Bot</button>
+          <button onClick={() => setMode('doctor')} style={{ background: mode === 'doctor' ? '#fff' : 'transparent', border: 'none', padding: '6px 12px', borderRadius: 16, cursor: 'pointer', fontWeight: 600, color: mode === 'doctor' ? '#114B4B' : '#8A968F' }}>Doctor</button>
         </div>
       </div>
       
       <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
-        {messages.map(m => (
-          <Message key={m.id} from={m.sender === 'user' ? 'me' : 'dr'} text={m.content} />
-        ))}
-        {session.status === 'bot_active' && menus.length > 0 && (
-          <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
-            {menus.map(menu => (
-              <button 
-                key={menu.id} 
-                onClick={() => sendMessage(null, menu.id)}
-                disabled={loading}
-                style={{ background: '#E7EFEE', color: '#114B4B', border: 'none', padding: '10px 16px', borderRadius: 16, cursor: 'pointer', fontFamily: 'IBM Plex Sans', fontWeight: 500 }}
-              >
-                {menu.label}
-              </button>
+        {mode === 'bot' ? (
+          <>
+            {botMessages.map(m => (
+              <Message key={m.id} from={m.sender === 'user' ? 'me' : 'dr'} text={m.content} />
             ))}
-          </div>
+            {session.status === 'bot_active' && menus.length > 0 && (
+              <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
+                {menus.map(menu => (
+                  <button 
+                    key={menu.id} 
+                    onClick={() => sendBotMessage(null, menu.id)}
+                    disabled={loading}
+                    style={{ background: '#E7EFEE', color: '#114B4B', border: 'none', padding: '10px 16px', borderRadius: 16, cursor: 'pointer', fontFamily: 'IBM Plex Sans', fontWeight: 500 }}
+                  >
+                    {menu.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {drMessages.map(m => (
+              <Message key={m.id} from={m.from === 'me' ? 'me' : 'dr'} text={m.text} />
+            ))}
+            {!providerId && <div style={{ color: '#8A968F', textAlign: 'center', marginTop: 20 }}>No active doctor linked.</div>}
+          </>
         )}
       </div>
       
       <div style={{ padding: 20, borderTop: '1px solid #E7ECEA' }}>
-        <form onSubmit={sendMessage} style={{ display: 'flex', gap: 10 }}>
+        <form onSubmit={mode === 'bot' ? sendBotMessage : sendDrMessage} style={{ display: 'flex', gap: 10 }}>
           <input 
             value={input} 
             onChange={e => setInput(e.target.value)} 
-            disabled={loading || session.status !== 'bot_active'}
-            placeholder={session.status === 'bot_active' ? 'Or type your issue...' : 'Session escalated. A human will respond.'} 
+            disabled={loading || (mode === 'bot' && session.status !== 'bot_active') || (mode === 'doctor' && !providerId)}
+            placeholder={mode === 'bot' ? (session.status === 'bot_active' ? 'Or type your issue...' : 'Session escalated. A human will respond.') : 'Message your doctor...'} 
             style={{ flex: 1, padding: '12px 16px', borderRadius: 20, border: '1px solid #E7ECEA', fontFamily: 'IBM Plex Sans', fontSize: 13 }} 
           />
-          <button type="submit" disabled={loading || session.status !== 'bot_active'} style={{ background: '#114B4B', color: '#fff', border: 'none', borderRadius: '50%', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, opacity: session.status !== 'bot_active' ? 0.5 : 1 }}>
+          <button type="submit" disabled={loading || (mode === 'bot' && session.status !== 'bot_active') || (mode === 'doctor' && !providerId)} style={{ background: '#114B4B', color: '#fff', border: 'none', borderRadius: '50%', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, opacity: (mode === 'bot' && session.status !== 'bot_active') ? 0.5 : 1 }}>
             <Send size={16} color="#fff" />
           </button>
         </form>
       </div>
     </Card>
   );
-}
-
-const NAV = [
+}const NAV = [
   { key: "overview", label: "Overview", icon: LayoutGrid, Screen: OverviewScreen },
   { key: "trends", label: "Trends & Forecast", icon: TrendingUp, Screen: TrendsScreen },
   { key: "meds", label: "Medications", icon: Pill, Screen: MedicationsScreen },
