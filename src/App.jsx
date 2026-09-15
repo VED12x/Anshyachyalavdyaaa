@@ -592,15 +592,15 @@ function CareScreen() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch(${API_URL}/chatbot/sessions, {
+    fetch(`${API_URL}/chatbot/sessions`, {
       method: 'POST',
-      headers: { Authorization: Bearer  }
+      headers: { Authorization: `Bearer ${token}` }
     })
     .then(r => r.json())
     .then(d => {
       const sessionId = d.data?.id;
       if (!sessionId) throw new Error("No session");
-      return fetch(${API_URL}/chatbot/sessions/, { headers: { Authorization: Bearer  } });
+      return fetch(`${API_URL}/chatbot/sessions/${sessionId}`, { headers: { Authorization: `Bearer ${token}` } });
     })
     .then(r => r.json())
     .then(d => {
@@ -610,13 +610,13 @@ function CareScreen() {
     })
     .catch(e => console.error(e));
 
-    fetch(${API_URL}/careLinks, { headers: { Authorization: Bearer  } })
+    fetch(`${API_URL}/careLinks`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => {
         if (d.data?.length > 0) {
           const pid = d.data[0].provider_id;
           setProviderId(pid);
-          return fetch(${API_URL}/messages?with_user_id=12548, { headers: { Authorization: Bearer  } });
+          return fetch(`${API_URL}/messages?with_user_id=${pid}`, { headers: { Authorization: `Bearer ${token}` } });
         }
       })
       .then(r => r && r.json())
@@ -632,9 +632,9 @@ function CareScreen() {
     setLoading(true);
     const payload = menuId ? { menu_id: menuId } : { content: input };
     try {
-      const res = await fetch(${API_URL}/chatbot/sessions//messages, {
+      const res = await fetch(`${API_URL}/chatbot/sessions/${session.id}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: Bearer  },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload)
       });
       const d = await res.json();
@@ -656,9 +656,9 @@ function CareScreen() {
     if (!input || !providerId) return;
     setLoading(true);
     try {
-      const res = await fetch(${API_URL}/messages, {
+      const res = await fetch(`${API_URL}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: Bearer  },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ recipient_id: providerId, content: input })
       });
       const d = await res.json();
@@ -688,7 +688,7 @@ function CareScreen() {
               {mode === 'bot' ? 'DC360 Support Chat' : 'My Doctor'}
             </div>
             <div style={{ fontFamily: 'IBM Plex Sans', fontSize: 12, color: '#8A968F' }}>
-              {mode === 'bot' ? (session.status === 'bot_active' ? 'Automated Assistant' : Escalated to ) : 'Direct Message'}
+              {mode === 'bot' ? (session.status === 'bot_active' ? 'Automated Assistant' : `Escalated to ${session.escalation_target}`) : 'Direct Message'}
             </div>
           </div>
         </div>
