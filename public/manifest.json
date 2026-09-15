@@ -1,0 +1,21 @@
+{
+  "name": "DiabetesCare 360",
+  "short_name": "DC360",
+  "description": "Unified platform for glucose logging, dietary tracking, medication reminders, and activity monitoring.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F6F4",
+  "theme_color": "#114B4B",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

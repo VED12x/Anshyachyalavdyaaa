@@ -1,3 +1,6 @@
+﻿const fs = require('fs');
+
+let content = `
 import { config } from '../config';
 
 interface ForecastPoint {
@@ -19,6 +22,16 @@ interface RiskResponse {
   event_type: string | null;
   reason: string;
   model_version: string;
+}
+
+interface MealAnalysisResponse {
+  estimated_carbs_g: number;
+  protein_g: number;
+  fat_g: number;
+  fiber_g: number;
+  calories: number;
+  tag: string;
+  recommendation: string;
 }
 
 /**
@@ -136,3 +149,6 @@ export class MLServiceClient {
 }
 
 export const mlService = new MLServiceClient();
+`;
+
+fs.writeFileSync('api/src/services/mlService.ts', content);
