@@ -176,6 +176,7 @@ function Pill_({ children, tone = "neutral" }) {
     good: { bg: "#E6F1EC", fg: "#3F8F6B" },
     warn: { bg: "#F6EDDD", fg: "#B8863A" },
     risk: { bg: "#F5E5E3", fg: "#C1473D" },
+    info: { bg: "#E5F2F9", fg: "#2B7B9A" },
   };
   const t = tones[tone];
   return (
