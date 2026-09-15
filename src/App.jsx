@@ -1026,7 +1026,7 @@ function CallOverlay({ token, userId }) {
 }
 
 export default function App() {
-  const [token, setToken] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem("token"));
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
   const [tab, setTab] = useState("overview");
@@ -1041,7 +1041,7 @@ export default function App() {
       });
       const d = await res.json();
       if (d.access_token) {
-        setToken(d.access_token);
+        setToken(d.access_token); localStorage.setItem("token", d.access_token);
       } else {
         alert(d.error || "Login failed");
       }
@@ -1099,13 +1099,13 @@ export default function App() {
   const user = parseJwt(token);
   
   if (user?.role === 'relative') {
-    return <RelativeDashboard token={token} onLogout={() => setToken(null)} />;
+    return <RelativeDashboard token={token} onLogout={() => { setToken(null); localStorage.removeItem("token"); }} />;
   }
   if (user?.role === 'doctor') {
-    return <DoctorDashboard token={token} onLogout={() => setToken(null)} />;
+    return <DoctorDashboard token={token} onLogout={() => { setToken(null); localStorage.removeItem("token"); }} />;
   }
   if (user?.role === 'admin') {
-    return <AdminDashboard token={token} onLogout={() => setToken(null)} />;
+    return <AdminDashboard token={token} onLogout={() => { setToken(null); localStorage.removeItem("token"); }} />;
   }
 
   const Active = NAV.find((n) => n.key === tab).Screen;
@@ -1141,14 +1141,14 @@ export default function App() {
               <div style={{ fontFamily: "Fraunces", fontSize: 24, fontWeight: 500, color: "#17221F" }}>{title}</div>
               <div style={{ fontFamily: "IBM Plex Sans", fontSize: 12.5, color: "#8A968F", marginTop: 3 }}>{subtitle}</div>
             </div>
-            <button onClick={() => setToken(null)} style={{ background: "transparent", border: "1px solid #E7ECEA", borderRadius: 8, padding: "8px 12px", cursor: "pointer", fontFamily: "IBM Plex Sans" }}>Log out</button>
+            <button onClick={() => { setToken(null); localStorage.removeItem("token"); }} style={{ background: "transparent", border: "1px solid #E7ECEA", borderRadius: 8, padding: "8px 12px", cursor: "pointer", fontFamily: "IBM Plex Sans" }}>Log out</button>
           </header>
           <div style={{ flex: 1, overflowY: "auto", padding: "22px 32px 40px" }}>
             {data ? <Active /> : <div style={{ padding: 40, textAlign: "center", color: "#8A968F", fontFamily: "IBM Plex Sans" }}>Fetching secure data from Render...</div>}
           </div>
         </main>
       </div>
-    <CallOverlay token={token} userId={token ? JSON.parse(atob(token.split(".")[1])).id : null} />
+    <CallOverlay token={token} userId={parseJwt(token)?.id} />
     </DataContext.Provider>
   );
 }
