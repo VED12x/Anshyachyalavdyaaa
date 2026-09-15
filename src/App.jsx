@@ -1148,7 +1148,8 @@ export default function App() {
           </div>
         </main>
       </div>
-    <CallOverlay token={token} userId={token ? JSON.parse(atob(token.split(".")[1])).id : null} />`n    </DataContext.Provider>
+    <CallOverlay token={token} userId={token ? JSON.parse(atob(token.split(".")[1])).id : null} />
+    </DataContext.Provider>
   );
 }
 
