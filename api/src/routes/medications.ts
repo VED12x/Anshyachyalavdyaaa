@@ -20,7 +20,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 
     const [medication] = await db('medications')
       .insert({
-        user_id: req.user!.id,
+        user_id: (req.user!.role === 'doctor' && req.body.patient_id ? req.body.patient_id : req.user!.id),
         name,
         dosage,
         times_per_day,
@@ -43,7 +43,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 router.get('/', authenticate, async (req: Request, res: Response) => {
   try {
     const medications = await db('medications')
-      .where({ user_id: req.user!.id, active: true })
+      .where({ user_id: (req.user!.role === 'doctor' && req.body.patient_id ? req.body.patient_id : req.user!.id), active: true })
       .orderBy('created_at', 'desc');
 
     // For each medication, get today's log status
@@ -77,7 +77,7 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
           }));
         }
 
-        // No logs yet — show schedule times
+        // No logs yet â€” show schedule times
         const times = med.schedule_times || [];
         return times.map((t: string) => ({
           id: med.id,
@@ -114,7 +114,7 @@ router.patch('/:id', authenticate, async (req: Request, res: Response) => {
     }
 
     const [medication] = await db('medications')
-      .where({ id: req.params.id, user_id: req.user!.id })
+      .where({ id: req.params.id, user_id: (req.user!.role === 'doctor' && req.query.patient_id ? req.query.patient_id : req.user!.id) })
       .update(updateData)
       .returning('*');
 
@@ -144,7 +144,7 @@ router.post('/:id/log', authenticate, async (req: Request, res: Response) => {
 
     // Verify medication belongs to user
     const medication = await db('medications')
-      .where({ id: req.params.id, user_id: req.user!.id })
+      .where({ id: req.params.id, user_id: (req.user!.role === 'doctor' && req.query.patient_id ? req.query.patient_id : req.user!.id) })
       .first();
 
     if (!medication) {
@@ -179,7 +179,7 @@ router.post('/:id/log', authenticate, async (req: Request, res: Response) => {
       const [newLog] = await db('medication_logs')
         .insert({
           medication_id: req.params.id,
-          user_id: req.user!.id,
+          user_id: (req.user!.role === 'doctor' && req.body.patient_id ? req.body.patient_id : req.user!.id),
           scheduled_for: new Date().toISOString(),
           taken_at: status === 'taken' ? (taken_at || new Date().toISOString()) : null,
           status,
@@ -194,3 +194,15 @@ router.post('/:id/log', authenticate, async (req: Request, res: Response) => {
 });
 
 export default router;
+
+router.delete('/:id', authenticate, async (req: Request, res: Response) => {
+  try {
+    const med = await db('medications').where({ id: req.params.id }).first();
+    if (!med) return res.status(404).json({ error: 'Not found' });
+    if (med.user_id !== req.user!.id && req.user!.role !== 'doctor') return res.status(403).json({ error: 'Forbidden' });
+    await db('medications').where({ id: req.params.id }).delete();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete' });
+  }
+});
