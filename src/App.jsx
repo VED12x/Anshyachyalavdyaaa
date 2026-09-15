@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, createContext, useContext } from "react";
+import React, { useState, useEffect, createContext, useContext } from "react";
 import {
   LayoutGrid, TrendingUp, Pill, Utensils, Users, Settings, Bell,
   Droplet, Bluetooth, Sparkles, Check, Clock, AlertTriangle, ChevronRight,
@@ -66,6 +66,13 @@ function RelativeDashboard({ token, onLogout }) {
 function DoctorDashboard({ token, onLogout }) {
   const [patients, setPatients] = useState([]);
   const [escalations, setEscalations] = useState([]);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  
+  const [messages, setMessages] = useState([]);
+  const [msgInput, setMsgInput] = useState('');
+  const [meds, setMeds] = useState([]);
+  const [newMedName, setNewMedName] = useState('');
+  const [newMedDose, setNewMedDose] = useState('');
 
   useEffect(() => {
     fetch(`${API_URL}/doctor/patients`, { headers: { Authorization: `Bearer ${token}` } })
@@ -73,6 +80,91 @@ function DoctorDashboard({ token, onLogout }) {
     fetch(`${API_URL}/doctor/escalations`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(d => setEscalations(d.data || []));
   }, [token]);
+
+  const selectPatient = (p) => {
+    setSelectedPatient(p);
+    fetch(`${API_URL}/messages?with_user_id=${p.id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).then(d => setMessages(d.data || []));
+    fetch(`${API_URL}/medications?patient_id=${p.id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).then(d => setMeds(d.data || []));
+  };
+
+  const sendMessage = async (e) => {
+    e.preventDefault();
+    if(!msgInput) return;
+    await fetch(`${API_URL}/messages`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ recipient_id: selectedPatient.id, content: msgInput })
+    });
+    setMsgInput('');
+    selectPatient(selectedPatient);
+  };
+
+  const addMed = async (e) => {
+    e.preventDefault();
+    if(!newMedName || !newMedDose) return;
+    await fetch(`${API_URL}/medications`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ patient_id: selectedPatient.id, name: newMedName, dosage: newMedDose, times_per_day: 1 })
+    });
+    setNewMedName(''); setNewMedDose('');
+    selectPatient(selectedPatient);
+  };
+
+  const removeMed = async (medId) => {
+    await fetch(`${API_URL}/medications/${medId}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+    });
+    selectPatient(selectedPatient);
+  };
+
+  if (selectedPatient) {
+    return (
+      <div style={{ padding: 40, fontFamily: "IBM Plex Sans", background: "#F5F6F4", minHeight: "100vh" }}>
+        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 30 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
+            <button onClick={() => setSelectedPatient(null)} style={{ padding: "6px 12px", borderRadius: 8, cursor: "pointer", background: "#E7ECEA", border: "none" }}>&larr; Back</button>
+            <h2>Telemedicine: {selectedPatient.name}</h2>
+          </div>
+          <button onClick={onLogout} style={{ padding: "8px 16px", borderRadius: 8, cursor: "pointer" }}>Log out</button>
+        </header>
+        
+        <div style={{ display: "flex", gap: 20 }}>
+          <Card style={{ flex: 1 }}>
+            <SectionTitle>Medication Management</SectionTitle>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+              {meds.length === 0 ? <p style={{color: "#8A968F", fontSize: 13}}>No medications prescribed.</p> : meds.map(m => (
+                <div key={m.id} style={{ display: "flex", justifyContent: "space-between", padding: 10, border: "1px solid #E7ECEA", borderRadius: 8 }}>
+                  <div><strong style={{color:"#17221F"}}>{m.name}</strong> <span style={{color:"#8A968F", fontSize:13}}>{m.dosage}</span></div>
+                  <button onClick={() => removeMed(m.id)} style={{ background: "#F5E5E3", color: "#C1473D", border: "none", borderRadius: 4, cursor: "pointer", padding: "4px 8px", fontSize: 12 }}>Remove</button>
+                </div>
+              ))}
+            </div>
+            <form onSubmit={addMed} style={{ display: "flex", gap: 10 }}>
+              <input value={newMedName} onChange={e => setNewMedName(e.target.value)} placeholder="Med Name" style={{ flex: 1, padding: 8, borderRadius: 6, border: "1px solid #ccc" }} />
+              <input value={newMedDose} onChange={e => setNewMedDose(e.target.value)} placeholder="Dosage" style={{ width: 80, padding: 8, borderRadius: 6, border: "1px solid #ccc" }} />
+              <button type="submit" style={{ background: "#114B4B", color: "#fff", border: "none", borderRadius: 6, padding: "0 12px", cursor: "pointer" }}>Add</button>
+            </form>
+          </Card>
+
+          <Card style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <SectionTitle>Direct Message</SectionTitle>
+            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, marginBottom: 15, maxHeight: 300 }}>
+              {messages.length === 0 ? <p style={{color: "#8A968F", fontSize: 13}}>No messages yet.</p> : messages.map(m => (
+                <div key={m.id} style={{ background: m.sender_id === selectedPatient.id ? "#F5F6F4" : "#E6F1EC", padding: 10, borderRadius: 8, alignSelf: m.sender_id === selectedPatient.id ? "flex-start" : "flex-end", maxWidth: "80%", color: "#17221F", fontSize: 14 }}>
+                  {m.content}
+                </div>
+              ))}
+            </div>
+            <form onSubmit={sendMessage} style={{ display: "flex", gap: 10 }}>
+              <input value={msgInput} onChange={e => setMsgInput(e.target.value)} placeholder="Message..." style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #ccc" }} />
+              <button type="submit" style={{ background: "#114B4B", color: "#fff", border: "none", borderRadius: 8, padding: "0 16px", cursor: "pointer" }}>Send</button>
+            </form>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: 40, fontFamily: "IBM Plex Sans", background: "#F5F6F4", minHeight: "100vh" }}>
@@ -83,11 +175,23 @@ function DoctorDashboard({ token, onLogout }) {
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
         <Card style={{ flex: 2 }}>
           <h3>My Patients</h3>
-          <table style={{ width: "100%", textAlign: "left", marginTop: 10 }}>
-            <thead><tr><th>Name</th><th>Email</th><th>Type</th></tr></thead>
+          <table style={{ width: "100%", textAlign: "left", marginTop: 10, borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "2px solid #eee" }}>
+                <th style={{ padding: "10px 0" }}>Name</th>
+                <th>Email</th>
+                <th>Type</th>
+                <th>Action</th>
+              </tr>
+            </thead>
             <tbody>
               {patients.map(p => (
-                <tr key={p.id}><td>{p.name}</td><td>{p.email}</td><td>{p.diabetes_type}</td></tr>
+                <tr key={p.id} style={{ borderBottom: "1px solid #eee" }}>
+                  <td style={{ padding: "10px 0" }}>{p.name}</td>
+                  <td>{p.email}</td>
+                  <td>{p.diabetes_type}</td>
+                  <td><button onClick={() => selectPatient(p)} style={{ background: "#E6F1EC", color: "#3F8F6B", border: "none", padding: "6px 12px", borderRadius: 6, cursor: "pointer" }}>Manage</button></td>
+                </tr>
               ))}
             </tbody>
           </table>
