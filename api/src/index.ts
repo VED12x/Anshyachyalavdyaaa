@@ -25,9 +25,9 @@ import chatbotRoutes from './routes/chatbot';
 import messageRoutes from './routes/messages';
 import careLinkRoutes from './routes/careLinks';
 import callRoutes from './routes/calls';
-import callRoutes from './routes/calls';
 
 const app = express();
+app.set('trust proxy', 1);
 const httpServer = createServer(app);
 
 // --- Global Middleware ---

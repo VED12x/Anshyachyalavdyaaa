@@ -1043,7 +1043,7 @@ export default function App() {
       if (d.access_token) {
         setToken(d.access_token);
       } else {
-        alert("Login failed");
+        alert(d.error || "Login failed");
       }
     } catch (e) {
       alert("Error connecting to API");
