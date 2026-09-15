@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, createContext, useContext } from "react";
+import React, { useState, useEffect, createContext, useContext } from "react";
 import {
   LayoutGrid, TrendingUp, Pill, Utensils, Users, Settings, Bell,
   Droplet, Bluetooth, Sparkles, Check, Clock, AlertTriangle, ChevronRight,
@@ -9,9 +9,8 @@ import {
   Line, ComposedChart, CartesianGrid
 } from "recharts";
 
-const fs = require('fs');
+const API_URL = "https://dc360-api.onrender.com";
 
-const dashboardsCode = 
 function RelativeDashboard({ token, onLogout }) {
   const [patients, setPatients] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -41,7 +40,7 @@ function RelativeDashboard({ token, onLogout }) {
           <div style={{ display: "flex", gap: 20 }}>
             <Card style={{ flex: 1 }}>
               <h3>Current Glucose</h3>
-              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || 'Ã¢â‚¬â€'} mg/dL</p>
+              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || 'â€”'} mg/dL</p>
             </Card>
             <Card style={{ flex: 1 }}>
               <h3>Recent Alerts</h3>
@@ -238,10 +237,10 @@ function OverviewScreen() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", gap: 16 }}>
-        <StatCard label="Current glucose" value={data.current_glucose?.value || "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"} unit="mg/dL" tone={{ tone: "good", label: "In range" }} icon={Droplet} />
+        <StatCard label="Current glucose" value={data.current_glucose?.value || "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} unit="mg/dL" tone={{ tone: "good", label: "In range" }} icon={Droplet} />
         <StatCard label="Time in range (7d)" value={data.time_in_range || "0"} unit="%" tone={{ tone: "good", label: "Stable" }} icon={TrendingUp} />
-        <StatCard label="Estimated HbA1c" value={data.estimated_hba1c || "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"} unit="%" tone={{ tone: "warn", label: "Watch trend" }} icon={Sparkles} />
-        <StatCard label="Adherence" value={data.adherence || "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"} unit="%" tone={{ tone: "good", label: "On track" }} icon={Pill} />
+        <StatCard label="Estimated HbA1c" value={data.estimated_hba1c || "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} unit="%" tone={{ tone: "warn", label: "Watch trend" }} icon={Sparkles} />
+        <StatCard label="Adherence" value={data.adherence || "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} unit="%" tone={{ tone: "good", label: "On track" }} icon={Pill} />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18, alignItems: "start" }}>
@@ -314,7 +313,7 @@ function DietScreen() {
   const [simulationResult, setSimulationResult] = useState(null);
 
   useEffect(() => {
-    fetch(`/meals`, { headers: { Authorization: `Bearer ` }})
+    fetch(`${API_URL}/meals`, { headers: { Authorization: `Bearer ${token}` }})
       .then(r => r.json()).then(d => setMeals(d.data || [])).catch(console.error);
   }, [token]);
 
@@ -324,9 +323,9 @@ function DietScreen() {
     setLoading(true);
     setSimulationResult(null);
     try {
-      const res = await fetch(`/meals`, {
+      const res = await fetch(`${API_URL}/meals`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ description: input, logged_at: new Date().toISOString() })
       });
       const m = await res.json();
@@ -334,7 +333,7 @@ function DietScreen() {
         id: m.id,
         name: m.description,
         time: new Date(m.logged_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-        carbs: m.estimated_carbs_g ? `g carbs` : 'â€”',
+        carbs: m.estimated_carbs_g ? `${Math.round(m.estimated_carbs_g)}g carbs` : '—',
         tag: m.tag || 'Pending',
         recommendation: m.recommendation,
         logged_at: m.logged_at,
@@ -352,9 +351,9 @@ function DietScreen() {
     if (!input) return;
     setLoading(true);
     try {
-      const res = await fetch(`/meals/simulate`, {
+      const res = await fetch(`${API_URL}/meals/simulate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ description: input })
       });
       const d = await res.json();
@@ -662,6 +661,9 @@ export default function App() {
     </DataContext.Provider>
   );
 }
+
+
+
 
 
 
