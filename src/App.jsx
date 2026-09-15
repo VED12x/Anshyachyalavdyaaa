@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, createContext, useContext } from "react";
+import React, { useState, useEffect, createContext, useContext } from "react";
 import {
   LayoutGrid, TrendingUp, Pill, Utensils, Users, Settings, Bell,
   Droplet, Bluetooth, Sparkles, Check, Clock, AlertTriangle, ChevronRight,
@@ -340,7 +340,7 @@ function MedicationsScreen() {
   const [meds, setMeds] = useState([]);
   
   useEffect(() => {
-    fetch(${API_URL}/medications, { headers: { Authorization: Bearer  }})
+    fetch(`${API_URL}/medications`, { headers: { Authorization: `Bearer ${token}` }})
       .then(r => r.json()).then(d => setMeds(d.data || [])).catch(console.error);
   }, [token]);
 
@@ -353,7 +353,7 @@ function MedicationsScreen() {
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {meds.length === 0 && <div style={{ color: "#8A968F", fontSize: 13, fontFamily: "IBM Plex Sans" }}>No medications found.</div>}
         {meds.map(m => (
-          <div key={m.log_id || ${m.id}-} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", border: "1px solid #F1F3F2", borderRadius: 12 }}>
+          <div key={m.log_id || `${m.id}-${m.time}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", border: "1px solid #F1F3F2", borderRadius: 12 }}>
             <div>
               <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, fontWeight: 600, color: "#17221F", textDecoration: m.done ? "line-through" : "none", opacity: m.done ? 0.6 : 1 }}>{m.name}</div>
               <div style={{ fontFamily: "IBM Plex Sans", fontSize: 12.5, color: "#8A968F", marginTop: 4 }}>Scheduled for {m.time}</div>
