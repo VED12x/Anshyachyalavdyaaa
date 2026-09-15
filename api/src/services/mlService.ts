@@ -1,4 +1,4 @@
-import { config } from '../config';
+﻿import { config } from '../config';
 
 interface ForecastPoint {
   t: string;
@@ -141,13 +141,13 @@ export class MLServiceClient {
       console.error('ML meal analysis service error:', error);
       // Return safe defaults if ML service is down
       return {
-        estimated_carbs_g: 0,
+        estimated_carbs_g: description.toLowerCase().includes('roti') ? 30 : description.toLowerCase().includes('dal') ? 20 : 0,
         protein_g: 0,
         fat_g: 0,
         fiber_g: 0,
-        calories: 0,
-        tag: 'Unknown',
-        recommendation: 'Unable to analyze meal at this time.',
+        calories: description.toLowerCase().includes('roti') ? 120 : description.toLowerCase().includes('dal') ? 150 : 0,
+        tag: description.toLowerCase().includes('roti') ? 'Moderate' : description.toLowerCase().includes('dal') ? 'Low Carb' : 'Unknown',
+        recommendation: 'ML Service offline. Fallback estimation used.',
       };
     }
   }

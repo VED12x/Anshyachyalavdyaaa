@@ -81,13 +81,26 @@ function DoctorDashboard({ token, onLogout }) {
       .then(r => r.json()).then(d => setEscalations(d.data || []));
   }, [token]);
 
+  const fetchPatientData = (pid) => {
+    fetch(`${API_URL}/messages?with_user_id=${pid}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).then(d => { if(d.data) setMessages(d.data) });
+    fetch(`${API_URL}/medications?patient_id=${pid}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).then(d => { if(d.data) setMeds(d.data) });
+  };
+
   const selectPatient = (p) => {
     setSelectedPatient(p);
-    fetch(`${API_URL}/messages?with_user_id=${p.id}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(d => setMessages(d.data || []));
-    fetch(`${API_URL}/medications?patient_id=${p.id}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(d => setMeds(d.data || []));
+    fetchPatientData(p.id);
   };
+
+  useEffect(() => {
+    if (!selectedPatient) return;
+    const interval = setInterval(() => {
+      fetch(`${API_URL}/messages?with_user_id=${selectedPatient.id}`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json()).then(d => { if(d.data) setMessages(d.data) });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [selectedPatient, token]);
 
   const sendMessage = async (e) => {
     e.preventDefault();
@@ -97,7 +110,7 @@ function DoctorDashboard({ token, onLogout }) {
       body: JSON.stringify({ recipient_id: selectedPatient.id, content: msgInput })
     });
     setMsgInput('');
-    selectPatient(selectedPatient);
+    fetchPatientData(selectedPatient.id);
   };
 
   const addMed = async (e) => {
@@ -108,14 +121,14 @@ function DoctorDashboard({ token, onLogout }) {
       body: JSON.stringify({ patient_id: selectedPatient.id, name: newMedName, dosage: newMedDose, times_per_day: 1 })
     });
     setNewMedName(''); setNewMedDose('');
-    selectPatient(selectedPatient);
+    fetchPatientData(selectedPatient.id);
   };
 
   const removeMed = async (medId) => {
     await fetch(`${API_URL}/medications/${medId}`, {
       method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
     });
-    selectPatient(selectedPatient);
+    fetchPatientData(selectedPatient.id);
   };
 
   if (selectedPatient) {
@@ -124,43 +137,52 @@ function DoctorDashboard({ token, onLogout }) {
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 30 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
             <button onClick={() => setSelectedPatient(null)} style={{ padding: "6px 12px", borderRadius: 8, cursor: "pointer", background: "#E7ECEA", border: "none" }}>&larr; Back</button>
-            <h2>Telemedicine: {selectedPatient.name}</h2>
+            <div style={{ fontSize: 24, fontWeight: 600, color: "#17221F" }}>{selectedPatient.name}</div>
           </div>
-          <button onClick={onLogout} style={{ padding: "8px 16px", borderRadius: 8, cursor: "pointer" }}>Log out</button>
         </header>
-        
-        <div style={{ display: "flex", gap: 20 }}>
-          <Card style={{ flex: 1 }}>
-            <SectionTitle>Medication Management</SectionTitle>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-              {meds.length === 0 ? <p style={{color: "#8A968F", fontSize: 13}}>No medications prescribed.</p> : meds.map(m => (
-                <div key={m.id} style={{ display: "flex", justifyContent: "space-between", padding: 10, border: "1px solid #E7ECEA", borderRadius: 8 }}>
-                  <div><strong style={{color:"#17221F"}}>{m.name}</strong> <span style={{color:"#8A968F", fontSize:13}}>{m.dosage}</span></div>
-                  <button onClick={() => removeMed(m.id)} style={{ background: "#F5E5E3", color: "#C1473D", border: "none", borderRadius: 4, cursor: "pointer", padding: "4px 8px", fontSize: 12 }}>Remove</button>
-                </div>
-              ))}
-            </div>
-            <form onSubmit={addMed} style={{ display: "flex", gap: 10 }}>
-              <input value={newMedName} onChange={e => setNewMedName(e.target.value)} placeholder="Med Name" style={{ flex: 1, padding: 8, borderRadius: 6, border: "1px solid #ccc" }} />
-              <input value={newMedDose} onChange={e => setNewMedDose(e.target.value)} placeholder="Dosage" style={{ width: 80, padding: 8, borderRadius: 6, border: "1px solid #ccc" }} />
-              <button type="submit" style={{ background: "#114B4B", color: "#fff", border: "none", borderRadius: 6, padding: "0 12px", cursor: "pointer" }}>Add</button>
-            </form>
-          </Card>
 
-          <Card style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-            <SectionTitle>Direct Message</SectionTitle>
-            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, marginBottom: 15, maxHeight: 300 }}>
-              {messages.length === 0 ? <p style={{color: "#8A968F", fontSize: 13}}>No messages yet.</p> : messages.map(m => (
-                <div key={m.id} style={{ background: m.sender_id === selectedPatient.id ? "#F5F6F4" : "#E6F1EC", padding: 10, borderRadius: 8, alignSelf: m.sender_id === selectedPatient.id ? "flex-start" : "flex-end", maxWidth: "80%", color: "#17221F", fontSize: 14 }}>
-                  {m.content}
+        <div style={{ display: "flex", gap: 30 }}>
+          {/* Chat Panel */}
+          <div style={{ flex: 2, background: "#fff", borderRadius: 16, padding: 25, boxShadow: "0 2px 10px rgba(0,0,0,0.02)", display: "flex", flexDirection: "column", height: 600 }}>
+            <h3 style={{ margin: "0 0 20px" }}>Direct Messaging</h3>
+            <div style={{ flex: 1, overflowY: "auto", border: "1px solid #E7ECEA", borderRadius: 8, padding: 15, marginBottom: 15, background: "#fafafa" }}>
+              {messages.length === 0 && <div style={{ color: "#8A968F", textAlign: "center" }}>No messages yet.</div>}
+              {messages.map(m => (
+                <div key={m.id} style={{ marginBottom: 10, textAlign: m.from === "me" ? "right" : "left" }}>
+                  <div style={{ display: "inline-block", padding: "8px 14px", borderRadius: 16, background: m.from === "me" ? "#114B4B" : "#E7EFEE", color: m.from === "me" ? "#fff" : "#17221F" }}>
+                    {m.text}
+                  </div>
                 </div>
               ))}
             </div>
             <form onSubmit={sendMessage} style={{ display: "flex", gap: 10 }}>
-              <input value={msgInput} onChange={e => setMsgInput(e.target.value)} placeholder="Message..." style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #ccc" }} />
-              <button type="submit" style={{ background: "#114B4B", color: "#fff", border: "none", borderRadius: 8, padding: "0 16px", cursor: "pointer" }}>Send</button>
+              <input value={msgInput} onChange={e => setMsgInput(e.target.value)} placeholder="Type a message..." style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: "1px solid #E7ECEA" }} />
+              <button type="submit" style={{ padding: "10px 20px", borderRadius: 8, background: "#114B4B", color: "#fff", border: "none", cursor: "pointer" }}>Send</button>
             </form>
-          </Card>
+          </div>
+
+          {/* Medications Panel */}
+          <div style={{ flex: 1, background: "#fff", borderRadius: 16, padding: 25, boxShadow: "0 2px 10px rgba(0,0,0,0.02)", height: 600, overflowY: "auto" }}>
+            <h3 style={{ margin: "0 0 20px" }}>Medications</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+              {meds.length === 0 && <div style={{ color: "#8A968F" }}>No active medications.</div>}
+              {meds.map(m => (
+                <div key={m.id} style={{ padding: 12, border: "1px solid #E7ECEA", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{m.name}</div>
+                    <div style={{ fontSize: 12, color: "#8A968F" }}>{m.dosage} &bull; {m.done ? "Taken today" : "Pending"}</div>
+                  </div>
+                  <button onClick={() => removeMed(m.id)} style={{ padding: "4px 8px", background: "#FEE2E2", color: "#DC2626", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12 }}>Remove</button>
+                </div>
+              ))}
+            </div>
+            <form onSubmit={addMed} style={{ display: "flex", flexDirection: "column", gap: 10, padding: 15, background: "#F5F6F4", borderRadius: 8 }}>
+              <h4 style={{ margin: 0 }}>Add New Medication</h4>
+              <input value={newMedName} onChange={e => setNewMedName(e.target.value)} placeholder="Medication Name" style={{ padding: 8, borderRadius: 6, border: "1px solid #E7ECEA" }} />
+              <input value={newMedDose} onChange={e => setNewMedDose(e.target.value)} placeholder="Dosage (e.g. 500mg)" style={{ padding: 8, borderRadius: 6, border: "1px solid #E7ECEA" }} />
+              <button type="submit" style={{ padding: 8, background: "#114B4B", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>Prescribe</button>
+            </form>
+          </div>
         </div>
       </div>
     );
@@ -169,47 +191,52 @@ function DoctorDashboard({ token, onLogout }) {
   return (
     <div style={{ padding: 40, fontFamily: "IBM Plex Sans", background: "#F5F6F4", minHeight: "100vh" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 30 }}>
-        <h2>Doctor Portal</h2>
-        <button onClick={onLogout} style={{ padding: "8px 16px", borderRadius: 8, cursor: "pointer" }}>Log out</button>
+        <div>
+          <div style={{ fontSize: 24, fontWeight: 600, color: "#17221F" }}>Doctor Portal</div>
+          <div style={{ color: "#8A968F" }}>Manage your patients and alerts</div>
+        </div>
+        <button onClick={onLogout} style={{ background: "transparent", border: "1px solid #E7ECEA", borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}>Log out</button>
       </header>
-      <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
-        <Card style={{ flex: 2 }}>
-          <h3>My Patients</h3>
-          <table style={{ width: "100%", textAlign: "left", marginTop: 10, borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid #eee" }}>
-                <th style={{ padding: "10px 0" }}>Name</th>
-                <th>Email</th>
-                <th>Type</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {patients.map(p => (
-                <tr key={p.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ padding: "10px 0" }}>{p.name}</td>
-                  <td>{p.email}</td>
-                  <td>{p.diabetes_type}</td>
-                  <td><button onClick={() => selectPatient(p)} style={{ background: "#E6F1EC", color: "#3F8F6B", border: "none", padding: "6px 12px", borderRadius: 6, cursor: "pointer" }}>Manage</button></td>
-                </tr>
+      
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <div style={{ background: "#fff", padding: 25, borderRadius: 16, boxShadow: "0 2px 10px rgba(0,0,0,0.02)" }}>
+          <h3 style={{ margin: "0 0 20px" }}>My Patients</h3>
+          {patients.length === 0 ? (
+            <div style={{ color: "#8A968F" }}>No patients linked yet.</div>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <tbody>
+                {patients.map(p => (
+                  <tr key={p.id} style={{ borderBottom: "1px solid #F1F3F2" }}>
+                    <td style={{ padding: "12px 0", fontWeight: 500 }}>{p.name}</td>
+                    <td style={{ padding: "12px 0", color: "#8A968F" }}>{p.diabetes_type}</td>
+                    <td style={{ padding: "12px 0", textAlign: "right" }}>
+                      <button onClick={() => selectPatient(p)} style={{ padding: "6px 12px", background: "#E7EFEE", color: "#114B4B", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600 }}>Manage</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div style={{ background: "#fff", padding: 25, borderRadius: 16, boxShadow: "0 2px 10px rgba(0,0,0,0.02)" }}>
+          <h3 style={{ margin: "0 0 20px" }}>Recent Alerts</h3>
+          {escalations.length === 0 ? (
+            <div style={{ color: "#8A968F" }}>No active escalations.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {escalations.map(e => (
+                <div key={e.id} style={{ padding: 15, background: "#FEE2E2", borderRadius: 8, color: "#DC2626" }}>
+                  <strong>{e.patient_name}</strong> - {e.reason}
+                </div>
               ))}
-            </tbody>
-          </table>
-        </Card>
-        <Card style={{ flex: 1 }}>
-          <h3>Escalations</h3>
-          {escalations.length === 0 ? <p>No urgent escalations.</p> : escalations.map(e => (
-            <div key={e.id} style={{ padding: 10, borderBottom: "1px solid #eee" }}>
-              <strong>{e.patient_name}</strong> requires attention.
             </div>
-          ))}
-        </Card>
+          )}
+        </div>
       </div>
     </div>
   );
-}
-
-function AdminDashboard({ token, onLogout }) {
+}function AdminDashboard({ token, onLogout }) {
   const [users, setUsers] = useState([]);
   const [sysHealth, setSysHealth] = useState(null);
   const [auditReason, setAuditReason] = useState("Support ticket #1234");
@@ -443,25 +470,61 @@ function TrendsScreen() {
 function MedicationsScreen() {
   const { token } = useContext(DataContext);
   const [meds, setMeds] = useState([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [name, setName] = useState('');
+  const [dosage, setDosage] = useState('');
   
-  useEffect(() => {
+  const fetchMeds = () => {
     fetch(`${API_URL}/medications`, { headers: { Authorization: `Bearer ${token}` }})
       .then(r => r.json()).then(d => setMeds(d.data || [])).catch(console.error);
+  };
+
+  useEffect(() => {
+    fetchMeds();
   }, [token]);
+
+  const addMed = async (e) => {
+    e.preventDefault();
+    if (!name || !dosage) return;
+    try {
+      await fetch(`${API_URL}/medications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name, dosage, times_per_day: 1 })
+      });
+      setShowAdd(false);
+      setName('');
+      setDosage('');
+      fetchMeds();
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 15 }}>
         <SectionTitle>Your Medications</SectionTitle>
-        <Pill_ tone="good">ðŸ”¥ 5 Day Streak!</Pill_>
+        <button onClick={() => setShowAdd(!showAdd)} style={{ background: '#114B4B', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: 'IBM Plex Sans' }}>
+          {showAdd ? 'Cancel' : '+ Add'}
+        </button>
       </div>
+
+      {showAdd && (
+        <form onSubmit={addMed} style={{ display: 'flex', gap: 10, marginBottom: 20, padding: 15, background: '#F5F6F4', borderRadius: 12 }}>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Medication Name" style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid #E7ECEA' }} />
+          <input value={dosage} onChange={e => setDosage(e.target.value)} placeholder="Dosage (e.g. 500mg)" style={{ width: 120, padding: '8px 12px', borderRadius: 8, border: '1px solid #E7ECEA' }} />
+          <button type="submit" style={{ background: '#114B4B', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, cursor: 'pointer' }}>Save</button>
+        </form>
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {meds.length === 0 && <div style={{ color: "#8A968F", fontSize: 13, fontFamily: "IBM Plex Sans" }}>No medications found.</div>}
         {meds.map(m => (
           <div key={m.log_id || `${m.id}-${m.time}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", border: "1px solid #F1F3F2", borderRadius: 12 }}>
             <div>
               <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, fontWeight: 600, color: "#17221F", textDecoration: m.done ? "line-through" : "none", opacity: m.done ? 0.6 : 1 }}>{m.name}</div>
-              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 12.5, color: "#8A968F", marginTop: 4 }}>Scheduled for {m.time}</div>
+              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 12.5, color: "#8A968F", marginTop: 4 }}>Scheduled for {m.time} - {m.dosage || ''}</div>
             </div>
             <Pill_ tone={m.done ? "good" : (m.status === "missed" ? "risk" : "neutral")}>{m.done ? "Taken" : (m.status === "missed" ? "Missed" : "Pending")}</Pill_>
           </div>
@@ -469,9 +532,7 @@ function MedicationsScreen() {
       </div>
     </Card>
   );
-}
-
-function DietScreen() {
+}function DietScreen() {
   const { token } = useContext(DataContext);
   const [meals, setMeals] = useState([]);
   const [input, setInput] = useState('');
@@ -625,6 +686,15 @@ function CareScreen() {
       })
       .catch(e => console.error(e));
   }, [token]);
+
+  useEffect(() => {
+    if (mode !== 'doctor' || !providerId) return;
+    const interval = setInterval(() => {
+      fetch(${API_URL}/messages?with_user_id=, { headers: { Authorization: `Bearer ` } })
+        .then(r => r.json()).then(d => { if(d.data) setDrMessages(d.data) });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [mode, providerId, token]);
 
   const sendBotMessage = async (e, menuId = null) => {
     if (e) e.preventDefault();

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
 // --- Auth Schemas ---
 export const registerSchema = z.object({
@@ -81,12 +81,12 @@ export const deviceReadingSchema = z.object({
 
 // --- Message Schemas ---
 export const messageSchema = z.object({
-  recipient_id: z.string().uuid('Invalid recipient ID'),
+  recipient_id: z.string().min(1, 'Invalid recipient ID'),
   content: z.string().min(1, 'Message content is required').max(5000),
 });
 
 export const messageQuerySchema = z.object({
-  with_user_id: z.string().uuid().optional(),
+  with_user_id: z.string().optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(50).optional().default(20),
 });

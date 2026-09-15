@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+﻿import { Router, Request, Response } from 'express';
 import db from '../db/connection';
 import { authenticate } from '../middleware/auth';
 import { medicationSchema, medicationUpdateSchema, medicationLogSchema } from '../validation/schemas';
@@ -20,7 +20,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 
     const [medication] = await db('medications')
       .insert({
-        user_id: (req.user!.role === 'doctor' && req.body.patient_id ? req.body.patient_id : req.user!.id),
+        user_id: (req.user!.role === 'doctor' && req.query.patient_id ? req.query.patient_id : req.user!.id),
         name,
         dosage,
         times_per_day,
@@ -43,7 +43,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 router.get('/', authenticate, async (req: Request, res: Response) => {
   try {
     const medications = await db('medications')
-      .where({ user_id: (req.user!.role === 'doctor' && req.body.patient_id ? req.body.patient_id : req.user!.id), active: true })
+      .where({ user_id: (req.user!.role === 'doctor' && req.query.patient_id ? req.query.patient_id : req.user!.id), active: true })
       .orderBy('created_at', 'desc');
 
     // For each medication, get today's log status
@@ -179,7 +179,7 @@ router.post('/:id/log', authenticate, async (req: Request, res: Response) => {
       const [newLog] = await db('medication_logs')
         .insert({
           medication_id: req.params.id,
-          user_id: (req.user!.role === 'doctor' && req.body.patient_id ? req.body.patient_id : req.user!.id),
+          user_id: (req.user!.role === 'doctor' && req.query.patient_id ? req.query.patient_id : req.user!.id),
           scheduled_for: new Date().toISOString(),
           taken_at: status === 'taken' ? (taken_at || new Date().toISOString()) : null,
           status,
