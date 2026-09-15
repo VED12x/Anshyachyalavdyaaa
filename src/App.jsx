@@ -293,6 +293,79 @@ function Message({ from, text }) {
   );
 }
 
+function TrendsScreen() {
+  const { data } = useContext(DataContext);
+  if (!data) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <Card>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <SectionTitle action={data.risk?.hyper_risk > 0.5 ? <Pill_ tone="warn">Rising risk</Pill_> : null}>Next 3 hours &mdash; Forecast</SectionTitle>
+          <button style={{ padding: "6px 12px", background: "#114B4B", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "IBM Plex Sans", fontSize: 12 }}>Export PDF (Phase 15)</button>
+        </div>
+        <ResponsiveContainer width="100%" height={260}>
+          <ComposedChart data={data.forecast || []} margin={{ top: 10, right: 20, bottom: 0, left: -10 }}>
+            <CartesianGrid vertical={false} stroke="#F1F3F2" />
+            <ReferenceLine y={180} stroke="#EADFC8" strokeDasharray="3 3" />
+            <ReferenceLine y={70} stroke="#EADFC8" strokeDasharray="3 3" />
+            <XAxis dataKey="t" tick={{ fontFamily: "IBM Plex Sans", fontSize: 11, fill: "#8A968F" }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontFamily: "IBM Plex Sans", fontSize: 11, fill: "#8A968F" }} axisLine={false} tickLine={false} domain={[50, 220]} />
+            <Area type="monotone" dataKey="high" stroke="none" fill="#C98A2C" fillOpacity={0.08} />
+            <Area type="monotone" dataKey="low" stroke="none" fill="#FFFFFF" fillOpacity={1} />
+            <Line type="monotone" dataKey="actual" stroke="#114B4B" strokeWidth={2.5} dot={{ r: 3.5, fill: "#114B4B" }} connectNulls={false} />
+            <Line type="monotone" dataKey="predicted" stroke="#C98A2C" strokeWidth={2} strokeDasharray="4 3" dot={false} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </Card>
+      <div style={{ display: "flex", gap: 18 }}>
+        <StatCard label="Avg. glucose (7d)" value={data.avg_glucose_7d || "â€”"} unit="mg/dL" icon={Droplet} />
+        <StatCard label="Hypo events (7d)" value={data.hypo_events_7d || 0} unit="events" icon={AlertTriangle} />
+        <StatCard label="Hyper events (7d)" value={data.hyper_events_7d || 0} unit="events" icon={TrendingUp} />
+      </div>
+      <Card style={{ background: "linear-gradient(135deg, #114B4B, #1B6363)", color: "#fff" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
+          <Sparkles size={14} color="#E9C883" />
+          <span style={{ fontFamily: "IBM Plex Sans", fontSize: 11, fontWeight: 600, color: "#E9C883", letterSpacing: 0.3 }}>ML EXPLAINABILITY</span>
+        </div>
+        <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, lineHeight: 1.5 }}>
+          {data.risk?.reason || "Based on your recent glucose readings, the model predicts stable levels for the next 3 hours."}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function MedicationsScreen() {
+  const { token } = useContext(DataContext);
+  const [meds, setMeds] = useState([]);
+  
+  useEffect(() => {
+    fetch(${API_URL}/medications, { headers: { Authorization: Bearer  }})
+      .then(r => r.json()).then(d => setMeds(d.data || [])).catch(console.error);
+  }, [token]);
+
+  return (
+    <Card>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 15 }}>
+        <SectionTitle>Your Medications</SectionTitle>
+        <Pill_ tone="good">🔥 5 Day Streak!</Pill_>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {meds.length === 0 && <div style={{ color: "#8A968F", fontSize: 13, fontFamily: "IBM Plex Sans" }}>No medications found.</div>}
+        {meds.map(m => (
+          <div key={m.log_id || ${m.id}-} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", border: "1px solid #F1F3F2", borderRadius: 12 }}>
+            <div>
+              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, fontWeight: 600, color: "#17221F", textDecoration: m.done ? "line-through" : "none", opacity: m.done ? 0.6 : 1 }}>{m.name}</div>
+              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 12.5, color: "#8A968F", marginTop: 4 }}>Scheduled for {m.time}</div>
+            </div>
+            <Pill_ tone={m.done ? "good" : (m.status === "missed" ? "risk" : "neutral")}>{m.done ? "Taken" : (m.status === "missed" ? "Missed" : "Pending")}</Pill_>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 function DietScreen() {
   const { token } = useContext(DataContext);
   const [meals, setMeals] = useState([]);
