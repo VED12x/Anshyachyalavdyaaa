@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+﻿import React, { useState, useEffect, createContext, useContext } from "react";
 import {
   LayoutGrid, TrendingUp, Pill, Utensils, Users, Settings, Bell,
   Droplet, Bluetooth, Sparkles, Check, Clock, AlertTriangle, ChevronRight,
@@ -46,7 +46,7 @@ function RelativeDashboard({ token, onLogout }) {
           <div style={{ display: "flex", gap: 20 }}>
             <Card style={{ flex: 1 }}>
               <h3>Current Glucose</h3>
-              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || 'Ã¢â‚¬â€'} mg/dL</p>
+              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || '-'} mg/dL</p>
             </Card>
             <Card style={{ flex: 1 }}>
               <h3>Recent Alerts</h3>
@@ -225,10 +225,10 @@ function OverviewScreen() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", gap: 16 }}>
-        <StatCard label="Current glucose" value={data.current_glucose?.value || "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"} unit="mg/dL" tone={{ tone: "good", label: "In range" }} icon={Droplet} />
+        <StatCard label="Current glucose" value={data.current_glucose?.value || "-"} unit="mg/dL" tone={{ tone: "good", label: "In range" }} icon={Droplet} />
         <StatCard label="Time in range (7d)" value={data.time_in_range || "0"} unit="%" tone={{ tone: "good", label: "Stable" }} icon={TrendingUp} />
-        <StatCard label="Estimated HbA1c" value={data.estimated_hba1c || "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"} unit="%" tone={{ tone: "warn", label: "Watch trend" }} icon={Sparkles} />
-        <StatCard label="Adherence" value={data.adherence || "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"} unit="%" tone={{ tone: "good", label: "On track" }} icon={Pill} />
+        <StatCard label="Estimated HbA1c" value={data.estimated_hba1c || "-"} unit="%" tone={{ tone: "warn", label: "Watch trend" }} icon={Sparkles} />
+        <StatCard label="Adherence" value={data.adherence || "-"} unit="%" tone={{ tone: "good", label: "On track" }} icon={Pill} />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18, alignItems: "start" }}>
@@ -318,7 +318,7 @@ function TrendsScreen() {
         </ResponsiveContainer>
       </Card>
       <div style={{ display: "flex", gap: 18 }}>
-        <StatCard label="Avg. glucose (7d)" value={data.avg_glucose_7d || "â€”"} unit="mg/dL" icon={Droplet} />
+        <StatCard label="Avg. glucose (7d)" value={data.avg_glucose_7d || "-"} unit="mg/dL" icon={Droplet} />
         <StatCard label="Hypo events (7d)" value={data.hypo_events_7d || 0} unit="events" icon={AlertTriangle} />
         <StatCard label="Hyper events (7d)" value={data.hyper_events_7d || 0} unit="events" icon={TrendingUp} />
       </div>
