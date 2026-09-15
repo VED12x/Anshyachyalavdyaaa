@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, createContext, useContext } from "react";
+import React, { useState, useEffect, createContext, useContext } from "react";
 import {
   LayoutGrid, TrendingUp, Pill, Utensils, Users, Settings, Bell,
   Droplet, Bluetooth, Sparkles, Check, Clock, AlertTriangle, ChevronRight,
@@ -236,7 +236,9 @@ function DoctorDashboard({ token, onLogout }) {
       </div>
     </div>
   );
-}function AdminDashboard({ token, onLogout }) {
+}
+
+function AdminDashboard({ token, onLogout }) {
   const [users, setUsers] = useState([]);
   const [sysHealth, setSysHealth] = useState(null);
   const [auditReason, setAuditReason] = useState("Support ticket #1234");
@@ -532,7 +534,9 @@ function MedicationsScreen() {
       </div>
     </Card>
   );
-}function DietScreen() {
+}
+
+function DietScreen() {
   const { token } = useContext(DataContext);
   const [meals, setMeals] = useState([]);
   const [input, setInput] = useState('');
@@ -560,7 +564,7 @@ function MedicationsScreen() {
         id: m.id,
         name: m.description,
         time: new Date(m.logged_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-        carbs: m.estimated_carbs_g ? `${Math.round(m.estimated_carbs_g)}g carbs` : 'Ã¢â‚¬â€',
+        carbs: m.estimated_carbs_g ? `${Math.round(m.estimated_carbs_g)}g carbs` : '-',
         tag: m.tag || 'Pending',
         recommendation: m.recommendation,
         logged_at: m.logged_at,
@@ -690,7 +694,7 @@ function CareScreen() {
   useEffect(() => {
     if (mode !== 'doctor' || !providerId) return;
     const interval = setInterval(() => {
-      fetch(${API_URL}/messages?with_user_id=, { headers: { Authorization: `Bearer ` } })
+      fetch(`${API_URL}/messages?with_user_id=${providerId}`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.json()).then(d => { if(d.data) setDrMessages(d.data) });
     }, 3000);
     return () => clearInterval(interval);
