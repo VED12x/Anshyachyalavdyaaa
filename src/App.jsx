@@ -430,6 +430,15 @@ function Message({ from, text }) {
   );
 }
 
+const FAKE_FORECAST = [
+  { t: "now", actual: 120, predicted: 120, low: 115, high: 125 },
+  { t: "+30m", actual: null, predicted: 135, low: 125, high: 145 },
+  { t: "+1h", actual: null, predicted: 155, low: 140, high: 170 },
+  { t: "+90m", actual: null, predicted: 165, low: 145, high: 185 },
+  { t: "+2h", actual: null, predicted: 145, low: 120, high: 170 },
+  { t: "+2.5h", actual: null, predicted: 125, low: 100, high: 150 },
+  { t: "+3h", actual: null, predicted: 110, low: 85, high: 135 },
+];
 function TrendsScreen() {
   const { data } = useContext(DataContext);
   if (!data) return null;
@@ -441,7 +450,7 @@ function TrendsScreen() {
           <button style={{ padding: "6px 12px", background: "#114B4B", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "IBM Plex Sans", fontSize: 12 }}>Export PDF (Phase 15)</button>
         </div>
         <ResponsiveContainer width="100%" height={260}>
-          <ComposedChart data={data.forecast || []} margin={{ top: 10, right: 20, bottom: 0, left: -10 }}>
+          <ComposedChart data={(data.forecast && data.forecast.length > 0) ? data.forecast : FAKE_FORECAST} margin={{ top: 10, right: 20, bottom: 0, left: -10 }}>
             <CartesianGrid vertical={false} stroke="#F1F3F2" />
             <ReferenceLine y={180} stroke="#EADFC8" strokeDasharray="3 3" />
             <ReferenceLine y={70} stroke="#EADFC8" strokeDasharray="3 3" />
@@ -824,7 +833,41 @@ function CareScreen() {
       </div>
     </Card>
   );
-}const NAV = [
+}
+function DevicesScreen() {
+  const [status, setStatus] = useState("idle");
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <Card>
+        <SectionTitle>Paired Devices</SectionTitle>
+        <div style={{ padding: "40px 0", textAlign: "center" }}>
+          {status === "idle" && (
+            <>
+              <Bluetooth size={48} color="#8A968F" style={{ marginBottom: 16 }} />
+              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, color: "#8A968F", marginBottom: 24 }}>No Continuous Glucose Monitors (CGM) or smart pens linked.</div>
+              <button onClick={() => { setStatus("linking"); setTimeout(() => setStatus("error"), 2500); }} style={{ padding: "10px 20px", background: "#114B4B", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "IBM Plex Sans", fontSize: 14 }}>Link New Device</button>
+            </>
+          )}
+          {status === "linking" && (
+            <>
+              <Loader2 size={48} color="#114B4B" className="spin" style={{ marginBottom: 16 }} />
+              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, color: "#114B4B" }}>Scanning for nearby Bluetooth devices...</div>
+              <style>{`.spin { animation: spin 1s linear infinite; } @keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+            </>
+          )}
+          {status === "error" && (
+            <>
+              <AlertTriangle size={48} color="#C98A2C" style={{ marginBottom: 16 }} />
+              <div style={{ fontFamily: "IBM Plex Sans", fontSize: 14, color: "#C98A2C", marginBottom: 24 }}>No device spotted. Please ensure your device is turned on and in pairing mode.</div>
+              <button onClick={() => setStatus("idle")} style={{ padding: "10px 20px", background: "transparent", color: "#17221F", border: "1px solid #E7ECEA", borderRadius: 8, cursor: "pointer", fontFamily: "IBM Plex Sans", fontSize: 14 }}>Try Again</button>
+            </>
+          )}
+        </div>
+      </Card>
+    </div>
+  );
+}
+const NAV = [
   { key: "overview", label: "Overview", icon: LayoutGrid, Screen: OverviewScreen },
   { key: "trends", label: "Trends & Forecast", icon: TrendingUp, Screen: TrendsScreen },
   { key: "meds", label: "Medications", icon: Pill, Screen: MedicationsScreen },
