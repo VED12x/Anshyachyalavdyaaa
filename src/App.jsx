@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+﻿import React, { useState, useEffect, createContext, useContext, useRef } from "react";
 import {
   LayoutGrid, TrendingUp, Pill, Utensils, Users, Settings, Bell,
   Droplet, Bluetooth, Sparkles, Check, Clock, AlertTriangle, ChevronRight,
@@ -137,7 +137,10 @@ function DoctorDashboard({ token, onLogout }) {
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 30 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
             <button onClick={() => setSelectedPatient(null)} style={{ padding: "6px 12px", borderRadius: 8, cursor: "pointer", background: "#E7ECEA", border: "none" }}>&larr; Back</button>
-            <div style={{ fontSize: 24, fontWeight: 600, color: "#17221F" }}>{selectedPatient.name}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
+              <div style={{ fontSize: 24, fontWeight: 600, color: "#17221F" }}>{selectedPatient.name}</div>
+              <button onClick={() => window.dispatchEvent(new CustomEvent("start-telemed-call", { detail: selectedPatient.id }))} style={{ background: "#114B4B", color: "#fff", border: "none", padding: "6px 16px", borderRadius: 8, cursor: "pointer" }}>Video Call</button>
+            </div>
           </div>
         </header>
 
@@ -652,6 +655,7 @@ function CareScreen() {
   const [botMessages, setBotMessages] = useState([]);
   const [menus, setMenus] = useState([]);
   const [drMessages, setDrMessages] = useState([]);
+  const handleCallDoctor = () => { if(providerId) window.dispatchEvent(new CustomEvent("start-telemed-call", { detail: providerId })); };
   
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -769,6 +773,7 @@ function CareScreen() {
         <div style={{ display: 'flex', gap: 10, background: '#F5F6F4', padding: 4, borderRadius: 20 }}>
           <button onClick={() => setMode('bot')} style={{ background: mode === 'bot' ? '#fff' : 'transparent', border: 'none', padding: '6px 12px', borderRadius: 16, cursor: 'pointer', fontWeight: 600, color: mode === 'bot' ? '#114B4B' : '#8A968F' }}>Bot</button>
           <button onClick={() => setMode('doctor')} style={{ background: mode === 'doctor' ? '#fff' : 'transparent', border: 'none', padding: '6px 12px', borderRadius: 16, cursor: 'pointer', fontWeight: 600, color: mode === 'doctor' ? '#114B4B' : '#8A968F' }}>Doctor</button>
+          {mode === 'doctor' && <button onClick={handleCallDoctor} style={{ background: "#114B4B", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 16, cursor: "pointer", fontWeight: 600, marginLeft: 10 }}>Call</button>}
         </div>
       </div>
       
@@ -834,6 +839,191 @@ const TITLES = {
   diet: ["Diet", "Meal log and personalized nutrition guidance"],
   care: ["Care Team", "Stay connected with your clinician"],
 };
+
+function CallOverlay({ token, userId }) {
+  const [activeCall, setActiveCall] = useState(null);
+  const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
+  const [peerConnection, setPeerConnection] = useState(null);
+
+  const localVideoRef = useRef();
+  const remoteVideoRef = useRef();
+
+  // Poll for incoming calls
+  useEffect(() => {
+    if (!token) return;
+    const interval = setInterval(async () => {
+      if (activeCall) return; // Don't poll if already in a call
+      try {
+        const res = await fetch(`${API_URL}/calls/active`, { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        if (data.data && data.data.status === 'ringing' && data.data.recipient_id === userId) {
+          setActiveCall(data.data);
+        }
+      } catch (e) {}
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [token, activeCall, userId]);
+
+  // Handle setting streams to video elements
+  useEffect(() => {
+    if (localVideoRef.current && localStream) localVideoRef.current.srcObject = localStream;
+    if (remoteVideoRef.current && remoteStream) remoteVideoRef.current.srcObject = remoteStream;
+  }, [localStream, remoteStream, activeCall]);
+
+  const initWebRTC = async (callId, roomId, isInitiator) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setLocalStream(stream);
+
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      setPeerConnection(pc);
+
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+      pc.ontrack = (event) => {
+        setRemoteStream(event.streams[0]);
+      };
+
+      pc.onicecandidate = async (event) => {
+        if (event.candidate) {
+          await fetch(`${API_URL}/calls/signal`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ room_id: roomId, type: 'ice-candidate', data: event.candidate })
+          });
+        }
+      };
+
+      if (isInitiator) {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await fetch(`${API_URL}/calls/signal`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ room_id: roomId, type: 'offer', data: offer })
+        });
+      }
+
+      // Start polling for signals
+      const sigInterval = setInterval(async () => {
+        const res = await fetch(`${API_URL}/calls/signal/${roomId}`, { headers: { Authorization: `Bearer ${token}` } });
+        const sigData = await res.json();
+        if (sigData.data && sigData.data.length > 0) {
+          for (const sig of sigData.data) {
+            if (sig.type === 'offer') {
+              await pc.setRemoteDescription(new RTCSessionDescription(sig.data));
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              await fetch(`${API_URL}/calls/signal`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ room_id: roomId, type: 'answer', data: answer })
+              });
+            } else if (sig.type === 'answer') {
+              await pc.setRemoteDescription(new RTCSessionDescription(sig.data));
+            } else if (sig.type === 'ice-candidate') {
+              await pc.addIceCandidate(new RTCIceCandidate(sig.data));
+            }
+          }
+        }
+        
+        // Also check if call ended
+        const activeRes = await fetch(`${API_URL}/calls/active`, { headers: { Authorization: `Bearer ${token}` } });
+        const activeData = await activeRes.json();
+        if (!activeData.data || activeData.data.status === 'ended') {
+           endCall(callId, pc, stream);
+           clearInterval(sigInterval);
+        }
+      }, 2000);
+
+      // Store interval ID on pc object for cleanup
+      pc.sigInterval = sigInterval;
+    } catch (e) {
+      console.error('WebRTC Init Error:', e);
+      alert('Could not access camera/microphone');
+    }
+  };
+
+  const answerCall = async () => {
+    if (!activeCall) return;
+    try {
+      await fetch(`${API_URL}/calls/${activeCall.id}/answer`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+      const updatedCall = { ...activeCall, status: 'active' };
+      setActiveCall(updatedCall);
+      initWebRTC(updatedCall.id, updatedCall.room_id, false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const endCall = async (callId = activeCall?.id, pc = peerConnection, stream = localStream) => {
+    if (callId) {
+      fetch(`${API_URL}/calls/${callId}/end`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } }).catch(()=>{});
+    }
+    if (pc) {
+      if (pc.sigInterval) clearInterval(pc.sigInterval);
+      pc.close();
+    }
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+    }
+    setActiveCall(null);
+    setLocalStream(null);
+    setRemoteStream(null);
+    setPeerConnection(null);
+  };
+
+  // Expose initiate method via global window event
+  useEffect(() => {
+    const handleStartCall = async (e) => {
+      const recipientId = e.detail;
+      try {
+        const res = await fetch(`${API_URL}/calls/initiate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ recipient_id: recipientId, call_type: 'video' })
+        });
+        const d = await res.json();
+        if (d.data) {
+          setActiveCall(d.data);
+          initWebRTC(d.data.id, d.data.room_id, true);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    window.addEventListener('start-telemed-call', handleStartCall);
+    return () => window.removeEventListener('start-telemed-call', handleStartCall);
+  }, [token]);
+
+  if (!activeCall) return null;
+
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      {activeCall.status === 'ringing' && activeCall.recipient_id === userId ? (
+        <div style={{ background: '#fff', padding: 40, borderRadius: 20, textAlign: 'center' }}>
+          <h2>Incoming Video Call</h2>
+          <div style={{ marginTop: 20, display: 'flex', gap: 20, justifyContent: 'center' }}>
+            <button onClick={() => endCall()} style={{ background: '#DC2626', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: 8, cursor: 'pointer', fontSize: 16 }}>Decline</button>
+            <button onClick={answerCall} style={{ background: '#114B4B', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: 8, cursor: 'pointer', fontSize: 16 }}>Accept</button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ position: 'relative', width: '80%', maxWidth: 1000, aspectRatio: '16/9', background: '#000', borderRadius: 20, overflow: 'hidden' }}>
+          {!remoteStream && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff' }}>{activeCall.status === 'ringing' ? 'Calling...' : 'Connecting...'}</div>}
+          <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <video ref={localVideoRef} autoPlay playsInline muted style={{ position: 'absolute', bottom: 20, right: 20, width: 200, aspectRatio: '16/9', objectFit: 'cover', borderRadius: 12, border: '2px solid #fff' }} />
+          <div style={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)' }}>
+            <button onClick={() => endCall()} style={{ background: '#DC2626', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: 24, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              End Call
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function App() {
   const [token, setToken] = useState(null);

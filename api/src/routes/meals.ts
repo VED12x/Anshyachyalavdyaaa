@@ -1,8 +1,8 @@
-﻿import { Router, Request, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import db from '../db/connection';
 import { authenticate } from '../middleware/auth';
 import { mealSchema } from '../validation/schemas';
-import { mlService } from '../services/mlService';
+import { analyzeMeal } from '../services/mealAnalyzer';
 
 const router = Router();
 
@@ -19,8 +19,8 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 
     const { description, photo_url, logged_at } = parsed.data;
 
-    // Call ML service for NLP dietary analysis
-    const analysis = await mlService.analyzeMeal(description, photo_url);
+    // Inline NLP dietary analysis (no external ML service needed)
+    const analysis = analyzeMeal(description);
 
     const [meal] = await db('meals')
       .insert({
@@ -116,8 +116,8 @@ router.post('/simulate', authenticate, async (req: Request, res: Response) => {
     if (!parsed.success) {
       return res.status(400).json({ error: 'Validation failed', details: parsed.error.errors });
     }
-    const { description, photo_url } = parsed.data;
-    const analysis = await mlService.analyzeMeal(description, photo_url);
+    const { description } = parsed.data;
+    const analysis = analyzeMeal(description);
     res.json({ data: analysis });
   } catch (error: any) {
     console.error('Simulate meal error:', error);

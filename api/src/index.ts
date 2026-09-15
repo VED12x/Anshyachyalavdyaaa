@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { config } from './config';
@@ -24,6 +24,7 @@ import relativeRoutes from './routes/relative';
 import chatbotRoutes from './routes/chatbot';
 import messageRoutes from './routes/messages';
 import careLinkRoutes from './routes/careLinks';
+import callRoutes from './routes/calls';
 
 const app = express();
 const httpServer = createServer(app);
