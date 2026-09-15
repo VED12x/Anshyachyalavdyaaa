@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+﻿import React, { useState, useEffect, createContext, useContext } from "react";
 import {
   LayoutGrid, TrendingUp, Pill, Utensils, Users, Settings, Bell,
   Droplet, Bluetooth, Sparkles, Check, Clock, AlertTriangle, ChevronRight,
@@ -9,7 +9,13 @@ import {
   Line, ComposedChart, CartesianGrid
 } from "recharts";
 
+const FONT_LINK = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap";
 const API_URL = "https://dc360-api.onrender.com";
+const DataContext = createContext(null);
+
+const parseJwt = (t) => {
+  try { return JSON.parse(atob(t.split('.')[1])); } catch (e) { return null; }
+};
 
 function RelativeDashboard({ token, onLogout }) {
   const [patients, setPatients] = useState([]);
@@ -40,7 +46,7 @@ function RelativeDashboard({ token, onLogout }) {
           <div style={{ display: "flex", gap: 20 }}>
             <Card style={{ flex: 1 }}>
               <h3>Current Glucose</h3>
-              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || 'â€”'} mg/dL</p>
+              <p style={{ fontSize: 32, fontWeight: "bold", color: "#114B4B" }}>{summary.latest_glucose || 'Ã¢â‚¬â€'} mg/dL</p>
             </Card>
             <Card style={{ flex: 1 }}>
               <h3>Recent Alerts</h3>
@@ -164,24 +170,6 @@ function AdminDashboard({ token, onLogout }) {
 }
 ;
 
-let appJsx = fs.readFileSync('src/App.jsx', 'utf8');
-
-// Replace the old dummy components with the new code
-const startStr = "function RelativeDashboard({ token, onLogout }) {";
-const endStr = "function Pill_({ children, tone = \"neutral\" }) {";
-
-const startIndex = appJsx.indexOf(startStr);
-const endIndex = appJsx.indexOf(endStr);
-
-if (startIndex !== -1 && endIndex !== -1) {
-  const finalJsx = appJsx.substring(0, startIndex) + dashboardsCode + "\n\n" + appJsx.substring(endIndex);
-  fs.writeFileSync('src/App.jsx', finalJsx);
-  console.log("App.jsx successfully patched!");
-} else {
-  console.error("Could not find replacement boundaries in App.jsx");
-}
-
-
 function Pill_({ children, tone = "neutral" }) {
   const tones = {
     neutral: { bg: "#EEF1F0", fg: "#5C6B66" },
@@ -237,10 +225,10 @@ function OverviewScreen() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", gap: 16 }}>
-        <StatCard label="Current glucose" value={data.current_glucose?.value || "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} unit="mg/dL" tone={{ tone: "good", label: "In range" }} icon={Droplet} />
+        <StatCard label="Current glucose" value={data.current_glucose?.value || "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"} unit="mg/dL" tone={{ tone: "good", label: "In range" }} icon={Droplet} />
         <StatCard label="Time in range (7d)" value={data.time_in_range || "0"} unit="%" tone={{ tone: "good", label: "Stable" }} icon={TrendingUp} />
-        <StatCard label="Estimated HbA1c" value={data.estimated_hba1c || "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} unit="%" tone={{ tone: "warn", label: "Watch trend" }} icon={Sparkles} />
-        <StatCard label="Adherence" value={data.adherence || "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} unit="%" tone={{ tone: "good", label: "On track" }} icon={Pill} />
+        <StatCard label="Estimated HbA1c" value={data.estimated_hba1c || "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"} unit="%" tone={{ tone: "warn", label: "Watch trend" }} icon={Sparkles} />
+        <StatCard label="Adherence" value={data.adherence || "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"} unit="%" tone={{ tone: "good", label: "On track" }} icon={Pill} />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18, alignItems: "start" }}>
@@ -333,7 +321,7 @@ function DietScreen() {
         id: m.id,
         name: m.description,
         time: new Date(m.logged_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-        carbs: m.estimated_carbs_g ? `${Math.round(m.estimated_carbs_g)}g carbs` : '—',
+        carbs: m.estimated_carbs_g ? `${Math.round(m.estimated_carbs_g)}g carbs` : 'â€”',
         tag: m.tag || 'Pending',
         recommendation: m.recommendation,
         logged_at: m.logged_at,
@@ -661,6 +649,9 @@ export default function App() {
     </DataContext.Provider>
   );
 }
+
+
+
 
 
 
